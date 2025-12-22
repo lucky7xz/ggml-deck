@@ -103,15 +103,15 @@ items = [
 
 [[commands]]
 name = "🌐 Launch WebUI Service"
-description = "Launch the server with sensible defaults. Assumes models are already downloaded. These run in the background.WebUI access :  http://127.0.0.1:8033"
+description = "Assumes models are already downloaded. Please note that all the commands below run in the background. All commands use the following WebUI link :  http://127.0.0.1:8033"
 col = "B"
 row = 1
 items = [
-    {name = "Open Local WebUI)", description = "Opens the LLamaCPP WebUI address in your Browser.", command = "xdg-open http://127.0.0.1:8033/ > /dev/null 2>&1 &"},
+    {name = "Open Local WebUI", description = "Opens the LLamaCPP WebUI address in your Browser.", command = "xdg-open http://127.0.0.1:8033/ > /dev/null 2>&1 &"},
 
     { name = "Start Qwen2.5-Omni-3B-GGUF WebUI", description = "Launches the Qwen2.5-Omni-3B-GGUF model WebUI.", command = "$HOME/llama.cpp/llama-server -hf ggml-org/Qwen2.5-Omni-3B-GGUF --jinja -c 0 --host 127.0.0.1 --port 8033 > ~/llama.cpp/server.log 2>&1 &", auto_close_execution = false },
 
-    { name = "Download & Run Kimi-VL-A3B-Thinking (CPU)", description = "Launches the Kimi-VL-A3B-Thinking model WebUI.", command = "$HOME/llama.cpp/llama-server -hf ggml-org/Kimi-VL-A3B-Thinking-2506-GGUF --jinja -c 0 --host 127.0.0.1 --port 8033 > ~/llama.cpp/server.log 2>&1 &"},
+    { name = "Start Kimi-VL-A3B-Thinking (CPU)", description = "Launches the Kimi-VL-A3B-Thinking model WebUI.", command = "$HOME/llama.cpp/llama-server -hf ggml-org/Kimi-VL-A3B-Thinking-2506-GGUF --jinja -c 0 --host 127.0.0.1 --port 8033 > ~/llama.cpp/server.log 2>&1 &", , auto_close_execution = false},
 
     { name = "Start GPU Server GPT-OSS-20B (GPU)", description = "Launches GPT-OSS-20B WebUI. Optim	ized for NVIDIA 3060 (12GB). Network available (0.0.0.0).", command = "$HOME/llama.cpp/llama-server -hf ggml-org/gpt-oss-20b-GGUF --jinja -c 0 -b 2048 -ub 2048 --n-cpu-moe 16 --host 0.0.0.0 --port 8033 > ~/llama.cpp/server.log 2>&1 &", auto_close_execution = false },
     

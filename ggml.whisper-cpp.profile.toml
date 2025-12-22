@@ -17,3 +17,4 @@ description = "Access the official GitHub releases page to download pre-compiled
 col = "A"
 row = 0
 command = "echo 'Under construction'"
+auto_close_execution = false

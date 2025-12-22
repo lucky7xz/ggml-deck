@@ -1,6 +1,6 @@
 profiles = [
     
-"ggml.llama_cpp",
-"ggml.whisper_cpp"
+"ggml.llama-cpp",
+"ggml.whisper-cpp"
 
 ]	
