@@ -1,0 +1,191 @@
+# ┌────────────────────────────────────────────────────────────────────────────┐
+# │ The Llama C++ Forge - A Local Inference Engine                             │
+# ├────────────────────────────────────────────────────────────────────────────┤
+# │ This profile provides a command center for building and running llama.cpp, │
+# │ a powerful inference engine for GGUF models. It includes commands for      │
+# │ building from source, running local servers, managing Docker containers*,  │
+# │ and accessing documentation.                                               │
+# └────────────────────────────────────────────────────────────────────────────┘
+#  *TODO
+# ┌─ Grid Dimensions ──────────────────────────────┐
+X = 3
+Y = 3
+# └────────────────────────────────────────────────┘
+
+
+
+
+#=================================================
+# ┌─ COLUMN A: Setup ──────────────────────────────────────────────────────┐
+# │ Download/Compile llama.cpp from source and manage the build directory.
+# └────────────────────────────────────────────────────────────────────────┘
+
+[[commands]]
+name = "📥 Setup Tutorial"
+description = "Access the official GitHub releases page to download pre-compiled binaries for your machine. Rename the unzipped binary folder to 'llama.cpp'."
+col = "A"
+row = 0
+items = [
+  { name = "Open Releases Page", description = "Opens the latest llama.cpp releases page in your browser. Download a pre-compiled release, unpack it, and rename the main directory to 'llama.cpp', placing it in your home folder (~/llama.cpp/llama-server, llama-cli, ...etc) to match the expected paths in Quick Start.", command = "xdg-open https://github.com/ggerganov/llama.cpp/releases/latest >/dev/null 2>&1 &", auto_close_execution = true },
+  
+  { name = "Open Target Directory", description ="Once the compressed file is downloaded, move the compressed file to this destination. Unpack the file and rename the folder to 'llama.cpp'. Make sure the binary files are not in a subfolder!", command = "xdg-open $HOME", auto_close_execution = true },
+
+  { name = " -- Open Build Docs -- ", description ="TODO!", command = "xdg-open https://github.com/ggml-org/llama.cpp/blob/master/docs/build.md >/dev/null 2>&1 &" },
+
+  { name = "Clone Source", description ="TODO!", command = "git clone https://github.com/ggml-org/llama.cpp.git", auto_close_execution = false },
+  
+  { name = "cmake w/ CUDA", description ="TODO!", command = "cmake -DGGML_CURA=ON", auto_close_execution = false },
+
+  { name = "cmake build", description ="TODO!", command = """
+ 
+  cmake -B build -DGGML_CUDA=ON
+  cmake --build build --config Release
+  
+  """, auto_close_execution = false },
+
+  { name = "nvcc version", description ="TODO!", command = "nvcc --version", auto_close_execution = false },
+  
+  { name = "apt cuda and cmake", description ="TODO!", command = "sudo apt update && sudo apt install nvidia-cuda-toolkit cmake", auto_close_execution = false },
+
+  
+]
+
+[[commands]]
+name = "🛑 Stop All Services"
+description = "Stops all running llama-server processes."
+col = "A"
+row = 2
+items = [
+  { name = "Stop All Servers", description = "Finds and terminates all running llama-server instances.", command = """
+#!/bin/bash
+
+# Check for either llama-server OR llama-cli
+if pgrep -f "llama-server|llama-cli" > /dev/null; then
+    # Kill both matches at once
+    pkill -f "llama-server|llama-cli"
+    echo "All llama-server and llama-cli processes have been stopped."
+else
+    echo "No llama processes (server or cli) were found running."
+fi
+
+""", auto_close_execution = false }
+]
+
+#=======================================================================================================================
+# ┌─ COLUMN B: Local Usage ───────────────────────────────────────────────────────────────────────────────────────────┐
+# │ Run inference and benchmarks directly on your local machine.
+# └─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┘
+[[commands]]
+name = "🦙 Quick Start (TUI)"
+description = "Launch a command to download models. These commands run in the foreground so you can see download progress. Once the model download is complete (TUI starts), you can safely Ctrl+C. Models are saved to ~/.cache/llama.cpp."
+col = "B"
+row = 0
+items = [
+    { name = "Browse Models", description = "Browse models on Huggingface Websote.", command ="xdg-open https://huggingface.co/ggml-org > /dev/null 2>&1 &"},
+    
+    { name = "Download & Run Qwen3-0.6B (CPU)", description = "Downloads the model in the foreground and starts llama.cpp CLI TUI. Model is cached.", command = "x-terminal-emulator -e $HOME/llama.cpp/llama-cli -hf ggml-org/Qwen3-0.6B-GGUF > /dev/null 2>&1 &" },
+    
+    { name = "Download & Run Qwen2.5-Omni-3B-GGUF (CPU)", description = "Downloads the model in the foreground and starts llama.cpp CLI TUI. Model is cached", command = "x-terminal-emulator -e $HOME/llama.cpp/llama-cli -hf ggml-org/Qwen2.5-Omni-3B-GGUF> /dev/null 2>&1 &"},
+    
+    { name = "Download & Run Qwen3-4B-Thinking (CPU)", description = "Downloads the model in the foreground and starts llama.cpp CLI TUI. Model is cached.", command = "x-terminal-emulator -e $HOME/llama.cpp/llama-cli -hf ggml-org/Qwen3-4B-Thinking-2507-Q8_0-GGUF > /dev/null 2>&1 &"},
+    
+    { name = "Download & Run Kimi-VL-A3B-Thinking (CPU)", description = "Downloads the model in the foreground and starts llama.cpp CLI TUI. ~16GB RAM minimum. Model is cached.", command = "x-terminal-emulator -e $HOME/llama.cpp/llama-cli -hf ggml-org/Kimi-VL-A3B-Thinking-2506-GGUF -c 0 > /dev/null 2>&1 &"},
+
+    { name = "Download & Run GPT-OSS-20B (GPU)", description = "Downloads GPT-OSS-20B (MXFP4). Optimized for NVIDIA 3060 (12GB). Runs in foreground.", command = "x-terminal-emulator -e $HOME/llama.cpp/llama-cli -hf ggml-org/gpt-oss-20b-GGUF -c 0 -ub 2048 -b 2048 --n-cpu-moe 16 > /dev/null 2>&1 &" },
+    
+    
+    { name = "Download & Run Qwen3-Coder-30B-A3B (GPU)", description = "Downloads GPT-OSS-20B (MXFP4). Optimized for NVIDIA 3060 (12GB). Runs in foreground.", command = "x-terminal-emulator -e $HOME/llama.cpp/llama-cli -hf ggml-org/Qwen3-Coder-30B-A3B-Instruct-Q8_0-GGUF -c 0 > /dev/null 2>&1 &" },
+
+    { name = "Download & Run GPT-OSS-120B (GPU)", description = "Downloads GPT-OSS-120B (MXFP4). Optimized for NVIDIA 3060 (12GB) with >40GB System RAM. Runs in foreground.", command = "x-terminal-emulator -e $HOME/llama.cpp/llama-cli -hf ggml-org/gpt-oss-120b-GGUF -c 0 -ub 2048 -b 2048 --n-cpu-moe 35 > /dev/null 2>&1 &" },
+
+    { name = "[MacOS] Download & Run Qwen2.5-Omni-3B (CPU)", description = "Downloads the Qwen2.5-Omni-3B-GGUF model in the foreground. [MacOS] This command serves as an example of how one could implement related commands, since x-terminal-emulator is not an option. Better MacOS support will come in time.", command = "echo '$HOME/llama.cpp/llama-cli -hf ggml-org/Qwen2.5-Omni-3B-GGUF' > /tmp/llama_launch.command && chmod +x /tmp/llama_launch.command && open /tmp/llama_launch.command > /dev/null 2>&1 &"},
+]
+
+[[commands]]
+name = "🌐 Launch WebUI Service"
+description = "Launch the server with sensible defaults. Assumes models are already downloaded. These run in the background.WebUI access :  http://127.0.0.1:8033"
+col = "B"
+row = 1
+items = [
+    {name = "Open Local WebUI)", description = "Opens the LLamaCPP WebUI address in your Browser.", command = "xdg-open http://127.0.0.1:8033/ > /dev/null 2>&1 &"},
+
+    { name = "Start Qwen2.5-Omni-3B-GGUF WebUI", description = "Launches the Qwen2.5-Omni-3B-GGUF model WebUI.", command = "$HOME/llama.cpp/llama-server -hf ggml-org/Qwen2.5-Omni-3B-GGUF --jinja -c 0 --host 127.0.0.1 --port 8033 > ~/llama.cpp/server.log 2>&1 &", auto_close_execution = false },
+
+    { name = "Download & Run Kimi-VL-A3B-Thinking (CPU)", description = "Launches the Kimi-VL-A3B-Thinking model WebUI.", command = "$HOME/llama.cpp/llama-server -hf ggml-org/Kimi-VL-A3B-Thinking-2506-GGUF --jinja -c 0 --host 127.0.0.1 --port 8033 > ~/llama.cpp/server.log 2>&1 &"},
+
+    { name = "Start GPU Server GPT-OSS-20B (GPU)", description = "Launches GPT-OSS-20B WebUI. Optim	ized for NVIDIA 3060 (12GB). Network available (0.0.0.0).", command = "$HOME/llama.cpp/llama-server -hf ggml-org/gpt-oss-20b-GGUF --jinja -c 0 -b 2048 -ub 2048 --n-cpu-moe 16 --host 0.0.0.0 --port 8033 > ~/llama.cpp/server.log 2>&1 &", auto_close_execution = false },
+    
+    { name = "Start GPU Server GPT-OSS-120B (GPU)", description = "Launches GPT-OSS-120B . Optimized for NVIDIA 3060 (12GB) with >40 GB system RAM. Network available (0.0.0.0).", command = "$HOME/llama.cpp/llama-server -hf ggml-org/gpt-oss-120b-GGUF --jinja -c 0 -b 2048 -ub 2048 --n-cpu-moe 35 --host 0.0.0.0 --port 8033 > ~/llama.cpp/server.log 2>&1 &", auto_close_execution = false },
+
+]
+
+#=======================================================================================================================
+# ┌─ COLUMN C: Models & Docs ─────────────────────────────────────────────────────────────────────────────────────────┐
+# │ Manage Models
+# └─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┘
+[[commands]]
+name = "💾 Manage Models"
+description = "Manage GGUF models downloaded to the local cache (~/.cache/llama.cpp)."
+col = "C"
+row = 0
+items = [
+    { name = "List Models", description = "List all GGUF models and their sizes.", command = """
+#!/bin/bash
+echo "📂 Location: ~/.cache/llama.cpp/"
+echo "---------------------------------------------------"
+du -h ~/.cache/llama.cpp/*.gguf | awk '{print $1, $2}' | sed "s|$HOME/.cache/llama.cpp/||"
+echo "---------------------------------------------------"
+du -sh ~/.cache/llama.cpp
+""", auto_close_execution = false },
+    { name = "Remove Model", description = "Select and delete a specific model file and its metadata.", command = """
+#!/bin/bash
+cd ~/.cache/llama.cpp || { echo "Cache dir not found"; exit 1; }
+files=(*.gguf)
+if [ ${#files[@]} -eq 0 ]; then
+    echo "No models found."
+    exit 0
+fi
+echo "Select a model to DELETE:"
+select file in "${files[@]}"; do
+    if [ -n "$file" ]; then
+        read -p "⚠️  Are you sure you want to delete '$file'? (y/N) " -n 1 -r
+        echo
+        if [[ $REPLY =~ ^[Yy]$ ]]; then
+            rm -v "$file"
+            # Try to remove associated metadata if it exists
+            rm -vf "${file}.etag"
+        else
+            echo "Cancelled."
+        fi
+        break
+    else
+        echo "Invalid selection."
+    fi
+done
+""", auto_close_execution = false }
+]
+
+[[commands]]
+name = "📚 Documentation"
+description = "Access official llama.cpp documentation and resources."
+col = "C"
+row = 1
+items = [
+    { name = "Open llama.cpp GitHub", description = "Explore the source code and latest updates.", command = "xdg-open https://github.com/ggerganov/llama.cpp >/dev/null 2>&1 &" },
+    { name = "Learn about GGUF", description = "Read about the GGUF model format.", command = "xdg-open https://github.com/ggerganov/ggml/blob/master/docs/gguf.md >/dev/null 2>&1 &"}
+]
+
+[[commands]]
+name = " ⏱️ Benchmarks"
+description = "Measure model performance with llama-bench."
+col = "C"
+row = 2
+items = [
+    { name = "Run Benchmark", description = "Prompts for a model path and parameters to run a benchmark.", command = """
+#!/bin/bash
+read -p 'Enter path to GGUF model file: ' model_path
+read -p 'Enter number of threads (e.g., 8): ' threads
+read -p 'Enter number of GPU layers (e.g., 35): ' ngl
+$HOME/llama.cpp/build/bin/llama-bench -hf "$model_path" -t "$threads" -ngl "$ngl" > ~/llama.cpp/server.log 2>&1 &
+""", auto_close_execution = false }
+]
