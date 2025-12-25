@@ -109,13 +109,133 @@ row = 1
 items = [
     {name = "Open Local WebUI", description = "Opens the LLamaCPP WebUI address in your Browser.", command = "xdg-open http://127.0.0.1:8033/ > /dev/null 2>&1 &"},
 
-    { name = "Start Qwen2.5-Omni-3B-GGUF WebUI", description = "Launches the Qwen2.5-Omni-3B-GGUF model WebUI.", command = "$HOME/llama.cpp/llama-server -hf ggml-org/Qwen2.5-Omni-3B-GGUF --jinja -c 0 --host 127.0.0.1 --port 8033 > ~/llama.cpp/server.log 2>&1 &", auto_close_execution = false },
+    { name = "Start Qwen2.5-Omni-3B-GGUF WebUI", description = "Launches the Qwen2.5-Omni-3B-GGUF model WebUI in background. Checks for success.", command = """
+MODEL="Qwen2.5-Omni-3B-GGUF"
+Full_Model_Name="ggml-org/Qwen2.5-Omni-3B-GGUF"
+HOST="127.0.0.1"
+PORT="8033"
+SERVER_LOG="$HOME/llama.cpp/server.log"
 
-    { name = "Start Kimi-VL-A3B-Thinking (CPU)", description = "Launches the Kimi-VL-A3B-Thinking model WebUI.", command = "$HOME/llama.cpp/llama-server -hf ggml-org/Kimi-VL-A3B-Thinking-2506-GGUF --jinja -c 0 --host 127.0.0.1 --port 8033 > ~/llama.cpp/server.log 2>&1 &", auto_close_execution = false},
+echo "🔍 Checking for model $MODEL..."
+if ! find ~/.cache/llama.cpp -name "*$MODEL*" -print -quit | grep -q .; then
+    echo "❌ Error: Model '$MODEL' not found in cache."
+    echo "💡 Please run the 'Download' command first (under 'Quick Start')."
+    exit 1
+fi
 
-    { name = "Start GPU Server GPT-OSS-20B (GPU)", description = "Launches GPT-OSS-20B WebUI. Optim	ized for NVIDIA 3060 (12GB). Network available (0.0.0.0).", command = "$HOME/llama.cpp/llama-server -hf ggml-org/gpt-oss-20b-GGUF --jinja -c 0 -b 2048 -ub 2048 --n-cpu-moe 16 --host 0.0.0.0 --port 8033 > ~/llama.cpp/server.log 2>&1 &", auto_close_execution = false },
+$HOME/llama.cpp/llama-server -hf "$Full_Model_Name" --jinja -c 0 --host "$HOST" --port "$PORT" > "$SERVER_LOG" 2>&1 &
+PID=$!
+echo "⏳ Starting server (PID $PID)... waiting 3s for initialization..."
+sleep 3
+
+if ps -p $PID > /dev/null; then
+    echo "✅ SUCCESS: Server process started (Model loading...)"
+    echo "   - PID: $PID"
+    echo "   - WebUI: http://$HOST:$PORT"
+    echo "   - Logs: $SERVER_LOG"
+    echo "💡 Monitor usage with 'btop'. Stop via 'Stop All Services'."
+else
+    echo "❌ FAILURE: Server process died."
+    echo "🔍 Last 10 lines of $SERVER_LOG:"
+    tail -n 10 "$SERVER_LOG"
+fi
+""", auto_close_execution = false },
+
+    { name = "Start Kimi-VL-A3B-Thinking (CPU)", description = "Launches the Kimi-VL-A3B-Thinking model WebUI in background. Checks for success.", command = """
+MODEL="Kimi-VL-A3B-Thinking-2506-GGUF"
+Full_Model_Name="ggml-org/Kimi-VL-A3B-Thinking-2506-GGUF"
+HOST="127.0.0.1"
+PORT="8033"
+SERVER_LOG="$HOME/llama.cpp/server.log"
+
+echo "🔍 Checking for model $MODEL..."
+if ! find ~/.cache/llama.cpp -name "*$MODEL*" -print -quit | grep -q .; then
+    echo "❌ Error: Model '$MODEL' not found in cache."
+    echo "💡 Please run the 'Download' command first (under 'Quick Start')."
+    exit 1
+fi
+
+$HOME/llama.cpp/llama-server -hf "$Full_Model_Name" --jinja -c 0 --host "$HOST" --port "$PORT" > "$SERVER_LOG" 2>&1 &
+PID=$!
+echo "⏳ Starting server (PID $PID)... waiting 3s for initialization..."
+sleep 3
+
+if ps -p $PID > /dev/null; then
+    echo "✅ SUCCESS: Server process started (Model loading...)"
+    echo "   - PID: $PID"
+    echo "   - WebUI: http://$HOST:$PORT"
+    echo "   - Logs: $SERVER_LOG"
+    echo "💡 Monitor usage with 'btop'. Stop via 'Stop All Services'."
+else
+    echo "❌ FAILURE: Server process died."
+    echo "🔍 Last 10 lines of $SERVER_LOG:"
+    tail -n 10 "$SERVER_LOG"
+fi
+""", auto_close_execution = false},
+
+    { name = "Start GPU Server GPT-OSS-20B (GPU)", description = "Launches GPT-OSS-20B WebUI. Optimized for NVIDIA 3060 (12GB). Network available (0.0.0.0).", command = """
+MODEL="gpt-oss-20b-GGUF"
+Full_Model_Name="ggml-org/gpt-oss-20b-GGUF"
+HOST="0.0.0.0"
+PORT="8033"
+SERVER_LOG="$HOME/llama.cpp/server.log"
+
+echo "🔍 Checking for model $MODEL..."
+if ! find ~/.cache/llama.cpp -name "*$MODEL*" -print -quit | grep -q .; then
+    echo "❌ Error: Model '$MODEL' not found in cache."
+    echo "💡 Please run the 'Download' command first (under 'Quick Start')."
+    exit 1
+fi
+
+$HOME/llama.cpp/llama-server -hf "$Full_Model_Name" --jinja -c 0 -b 2048 -ub 2048 --n-cpu-moe 16 --host "$HOST" --port "$PORT" > "$SERVER_LOG" 2>&1 &
+PID=$!
+echo "⏳ Starting server (PID $PID)... waiting 3s for initialization..."
+sleep 3
+
+if ps -p $PID > /dev/null; then
+    echo "✅ SUCCESS: Server process started (Model loading...)"
+    echo "   - PID: $PID"
+    echo "   - WebUI: http://$HOST:$PORT"
+    echo "   - Logs: $SERVER_LOG"
+    echo "💡 Monitor usage with 'btop'. Stop via 'Stop All Services'."
+else
+    echo "❌ FAILURE: Server process died."
+    echo "🔍 Last 10 lines of $SERVER_LOG:"
+    tail -n 10 "$SERVER_LOG"
+fi
+""", auto_close_execution = false },
     
-    { name = "Start GPU Server GPT-OSS-120B (GPU)", description = "Launches GPT-OSS-120B . Optimized for NVIDIA 3060 (12GB) with >40 GB system RAM. Network available (0.0.0.0).", command = "$HOME/llama.cpp/llama-server -hf ggml-org/gpt-oss-120b-GGUF --jinja -c 0 -b 2048 -ub 2048 --n-cpu-moe 35 --host 0.0.0.0 --port 8033 > ~/llama.cpp/server.log 2>&1 &", auto_close_execution = false },
+    { name = "Start GPU Server GPT-OSS-120B (GPU)", description = "Launches GPT-OSS-120B. Optimized for NVIDIA 3060 (12GB) with >40 GB system RAM. Network available (0.0.0.0).", command = """
+MODEL="gpt-oss-120b-GGUF"
+Full_Model_Name="ggml-org/gpt-oss-120b-GGUF"
+HOST="0.0.0.0"
+PORT="8033"
+SERVER_LOG="$HOME/llama.cpp/server.log"
+
+echo "🔍 Checking for model $MODEL..."
+if ! find ~/.cache/llama.cpp -name "*$MODEL*" -print -quit | grep -q .; then
+    echo "❌ Error: Model '$MODEL' not found in cache."
+    echo "💡 Please run the 'Download' command first (under 'Quick Start')."
+    exit 1
+fi
+
+$HOME/llama.cpp/llama-server -hf "$Full_Model_Name" --jinja -c 0 -b 2048 -ub 2048 --n-cpu-moe 35 --host "$HOST" --port "$PORT" > "$SERVER_LOG" 2>&1 &
+PID=$!
+echo "⏳ Starting server (PID $PID)... waiting 3s for initialization..."
+sleep 3
+
+if ps -p $PID > /dev/null; then
+    echo "✅ SUCCESS: Server process started (Model loading...)"
+    echo "   - PID: $PID"
+    echo "   - WebUI: http://$HOST:$PORT"
+    echo "   - Logs: $SERVER_LOG"
+    echo "💡 Monitor usage with 'btop'. Stop via 'Stop All Services'."
+else
+    echo "❌ FAILURE: Server process died."
+    echo "🔍 Last 10 lines of $SERVER_LOG:"
+    tail -n 10 "$SERVER_LOG"
+fi
+""", auto_close_execution = false },
 
 ]
 
