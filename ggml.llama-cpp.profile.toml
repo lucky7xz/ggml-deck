@@ -30,6 +30,26 @@ items = [
   
   { name = "Open Target Directory", description ="Once the compressed file is downloaded, move the compressed file to this destination. Unpack the file and rename the folder to 'llama.cpp'. Make sure the binary files are not in a subfolder!", command = "xdg-open $HOME", auto_close_execution = true },
 
+  { name = "🔍 Inspect Folder Setup", description = "Verify that llama.cpp directory and binaries are correctly placed in $HOME/llama.cpp.", command = """
+#!/bin/bash
+DIR="$HOME/llama.cpp"
+echo "🔍 Checking llama.cpp installation..."
+echo "-----------------------------------------------"
+check_file() {
+    if [ -f "$DIR/$1" ]; then echo "✅ Found: $1"; else echo "❌ MISSING: $1"; ERR=1; fi
+}
+[ -d "$DIR" ] && echo "✅ Directory: $DIR" || { echo "❌ MISSING: Directory $DIR"; ERR=1; }
+check_file "llama-cli"
+check_file "llama-server"
+check_file "llama-bench"
+echo "-----------------------------------------------"
+if [ "$ERR" == "1" ]; then
+    echo "💡 Tip: Make sure binaries are in '$DIR' and NOT in a subfolder."
+else
+    echo "🚀 All there! Setup looks correct."
+fi
+""", auto_close_execution = false },
+
   { name = " -- Open Build Docs -- ", description ="TODO!", command = "xdg-open https://github.com/ggml-org/llama.cpp/blob/master/docs/build.md >/dev/null 2>&1 &" },
 
   { name = "Clone Source", description ="TODO!", command = "git clone https://github.com/ggml-org/llama.cpp.git", auto_close_execution = false },
