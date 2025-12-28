@@ -83,20 +83,20 @@ row = 0
 items = [
     { name = "Browse Models", description = "Browse models on Huggingface Websote.", command ="xdg-open https://huggingface.co/ggml-org > /dev/null 2>&1 &"},
     
-    { name = "Download & Run Qwen3-0.6B (CPU)", description = "Downloads the model in the foreground and starts llama.cpp CLI TUI. Model is cached.", command = "set -m; cd $HOME/llama.cpp && ./llama-cli -hf ggml-org/Qwen3-0.6B-GGUF & fg; stty sane" },
+    { name = "Download & Run Qwen3-0.6B (CPU)", description = "Downloads the model in the foreground and starts llama.cpp CLI TUI. Model is cached.", command = "set -m; cd $HOME/llama.cpp && ./llama-cli -hf ggml-org/Qwen3-0.6B-GGUF & fg; stty sane", auto_close_execution = false },
     
-    { name = "Download & Run Qwen2.5-Omni-3B-GGUF (CPU)", description = "Downloads the model in the foreground and starts llama.cpp CLI TUI. Model is cached", command = "set -m; cd $HOME/llama.cpp && ./llama-cli -hf ggml-org/Qwen2.5-Omni-3B-GGUF & fg; stty sane" },
+    { name = "Download & Run Qwen2.5-Omni-3B-GGUF (CPU)", description = "Downloads the model in the foreground and starts llama.cpp CLI TUI. Model is cached", command = "set -m; cd $HOME/llama.cpp && ./llama-cli -hf ggml-org/Qwen2.5-Omni-3B-GGUF & fg; stty sane", auto_close_execution = false },
     
-    { name = "Download & Run Qwen3-4B-Thinking (CPU)", description = "Downloads the model in the foreground and starts llama.cpp CLI TUI. Model is cached.", command = "set -m; cd $HOME/llama.cpp && ./llama-cli -hf ggml-org/Qwen3-4B-Thinking-2507-Q8_0-GGUF & fg; stty sane" },
+    { name = "Download & Run Qwen3-4B-Thinking (CPU)", description = "Downloads the model in the foreground and starts llama.cpp CLI TUI. Model is cached.", command = "set -m; cd $HOME/llama.cpp && ./llama-cli -hf ggml-org/Qwen3-4B-Thinking-2507-Q8_0-GGUF & fg; stty sane", auto_close_execution = false },
     
-    { name = "Download & Run Kimi-VL-A3B-Thinking (CPU)", description = "Downloads the model in the foreground and starts llama.cpp CLI TUI. ~16GB RAM minimum. Model is cached.", command = "set -m; cd $HOME/llama.cpp && ./llama-cli -hf ggml-org/Kimi-VL-A3B-Thinking-2506-GGUF -c 0 & fg; stty sane" },
+    { name = "Download & Run Kimi-VL-A3B-Thinking (CPU)", description = "Downloads the model in the foreground and starts llama.cpp CLI TUI. ~16GB RAM minimum. Model is cached.", command = "set -m; cd $HOME/llama.cpp && ./llama-cli -hf ggml-org/Kimi-VL-A3B-Thinking-2506-GGUF -c 0 & fg; stty sane", auto_close_execution = false },
 
-    { name = "Download & Run GPT-OSS-20B (GPU)", description = "Downloads GPT-OSS-20B (MXFP4). Optimized for NVIDIA 3060 (12GB). Runs in foreground.", command = "set -m; cd $HOME/llama.cpp && ./llama-cli -hf ggml-org/gpt-oss-20b-GGUF -c 0 -ub 2048 -b 2048 --n-cpu-moe 16 & fg; stty sane" },
+    { name = "Download & Run GPT-OSS-20B (GPU)", description = "Downloads GPT-OSS-20B (MXFP4). Optimized for NVIDIA 3060 (12GB). Runs in foreground.", command = "set -m; cd $HOME/llama.cpp && ./llama-cli -hf ggml-org/gpt-oss-20b-GGUF -c 0 -ub 2048 -b 2048 --n-cpu-moe 16 & fg; stty sane", auto_close_execution = false },
     
     
-    { name = "Download & Run Qwen3-Coder-30B-A3B (GPU)", description = "Downloads GPT-OSS-20B (MXFP4). Optimized for NVIDIA 3060 (12GB). Runs in foreground.", command = "set -m; cd $HOME/llama.cpp && ./llama-cli -hf ggml-org/Qwen3-Coder-30B-A3B-Instruct-Q8_0-GGUF -c 0 & fg; stty sane" },
+    { name = "Download & Run Qwen3-Coder-30B-A3B (GPU)", description = "Downloads GPT-OSS-20B (MXFP4). Optimized for NVIDIA 3060 (12GB). Runs in foreground.", command = "set -m; cd $HOME/llama.cpp && ./llama-cli -hf ggml-org/Qwen3-Coder-30B-A3B-Instruct-Q8_0-GGUF -c 0 & fg; stty sane", auto_close_execution = false },
 
-    { name = "Download & Run GPT-OSS-120B (GPU)", description = "Downloads GPT-OSS-120B (MXFP4). Optimized for NVIDIA 3060 (12GB) with >40GB System RAM. Runs in foreground.", command = "set -m; cd $HOME/llama.cpp && ./llama-cli -hf ggml-org/gpt-oss-120b-GGUF -c 0 -ub 2048 -b 2048 --n-cpu-moe 35 & fg; stty sane" },
+    { name = "Download & Run GPT-OSS-120B (GPU)", description = "Downloads GPT-OSS-120B (MXFP4). Optimized for NVIDIA 3060 (12GB) with >40GB System RAM. Runs in foreground.", command = "set -m; cd $HOME/llama.cpp && ./llama-cli -hf ggml-org/gpt-oss-120b-GGUF -c 0 -ub 2048 -b 2048 --n-cpu-moe 35 & fg; stty sane", auto_close_execution = false },
 ]
 
 [[commands]]
