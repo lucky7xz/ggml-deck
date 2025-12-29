@@ -76,19 +76,28 @@ description = "Stops all running llama-server processes."
 col = "A"
 row = 2
 items = [
-  { name = "Stop All Servers", description = "Finds and terminates all running llama-server instances.", command = """
+  { name = "Stop All Servers", description = "Finds and terminates all running llama-server instances.", command = '''
 #!/bin/bash
+# Use -x (exact match) to target the binary names specifically.
+# This prevents matching this script's own command line arguments.
 
-# Check for either llama-server OR llama-cli
-if pgrep -f "llama-server|llama-cli" > /dev/null; then
-    # Kill both matches at once
-    pkill -f "llama-server|llama-cli"
-    echo "All llama-server and llama-cli processes have been stopped."
+echo "🛑 Stopping services..."
+pkill -x llama-server && echo " - Terminated llama-server"
+pkill -x llama-cli    && echo " - Terminated llama-cli"
+
+echo "⏳ Verifying (3s)..."
+sleep 3
+
+# Check if any processes with the exact binary name remain
+if pgrep -x "llama-server" >/dev/null || pgrep -x "llama-cli" >/dev/null; then
+    echo "⚠️  Warning: Processes still running:"
+    pgrep -a -x llama-server
+    pgrep -a -x llama-cli
 else
-    echo "No llama processes (server or cli) were found running."
+    echo "✅ All stopped."
 fi
-
-""", auto_close_execution = false }
+exit 0
+''', auto_close_execution = false }
 ]
 
 #=======================================================================================================================
