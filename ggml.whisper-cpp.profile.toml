@@ -1,20 +1,196 @@
+# ggml.whisper-cpp.profile.toml
+
 # ┌─ Grid Dimensions ──────────────────────────────┐
-X = 1
-Y = 1
+X = 3
+Y = 2
 # └────────────────────────────────────────────────┘
 
 
-
-
-#=======================================================================================================================
-# ┌─ COLUMN A: Setup ─────────────────────────────────────────────────────────────────────────────────────────────────┐
-# │ Compile llama.cpp from source and manage the build directory.
-# └─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┘
+#=================================================
+# ┌─ COLUMN A: Setup ──────────────────────────────────────────────────────┐
+# │ Download/Compile whisper.cpp from source 
+# └────────────────────────────────────────────────────────────────────────┘
 
 [[commands]]
-name = "TODO: 📥 Setup Tutorial"
-description = "Access the official GitHub releases page to download pre-compiled binaries for your machine. Rename the unzipped binary folder to 'whisper.cpp'."
+name = "📥 Setup Whisper"
+description = "Clone and build the whisper.cpp project."
 col = "A"
 row = 0
-command = "echo 'Under construction'"
-auto_close_execution = false
+items = [
+  { name = "Install Deps (SDL2 + jq)", description = "Required for Live Stream (SDL2) and Client Script (jq).", command = "sudo apt update && sudo apt install -y libsdl2-dev jq", auto_close_execution = false },
+
+  { name = "Clone Repository", description = "Clones whisper.cpp to $HOME/whisper.cpp", command = "git clone https://github.com/ggerganov/whisper.cpp.git $HOME/whisper.cpp", auto_close_execution = false },
+  
+  { name = "Build (CPU)", description = "Compiles whisper.cpp for CPU usage.", command = "cd $HOME/whisper.cpp && cmake -B build -DWHISPER_SDL2=ON && cmake --build build -j --config Release", auto_close_execution = false },
+
+  { name = "Build (CUDA)", description = "Compiles whisper.cpp with CUDA support (requires NVCC).", command = "cd $HOME/whisper.cpp && cmake -B build -DWHISPER_SDL2=ON -DGGML_CUDA=1 && cmake --build build -j --config Release", auto_close_execution = false },
+  
+  { name = "Check Install", description = "Verifies binaries exist.", command = """
+BIN_DIR="$HOME/whisper.cpp/build/bin"
+echo "---------------------------------------------------"
+check() { if [ -f "$1" ]; then echo "✅ Found: $(basename $1)"; else echo "❌ MISSING: $(basename $1)"; fi; }
+
+check "$BIN_DIR/whisper-cli"
+check "$BIN_DIR/whisper-server"
+check "$BIN_DIR/whisper-stream"
+echo "---------------------------------------------------"
+""", auto_close_execution = false }
+]
+
+#=================================================
+# ┌─ COLUMN B: Models ─────────────────────────────────────────────────────┐
+# │ Download GGML Models
+# └────────────────────────────────────────────────────────────────────────┘
+[[commands]]
+name = "💾 Manage Models"
+description = "Download models using the official script."
+col = "B"
+row = 0
+items = [
+  { name = "Download 'base' (Fastest)", description = "Downloads ggml-base.bin ~142MB", command = "cd $HOME/whisper.cpp && bash ./models/download-ggml-model.sh base", auto_close_execution = false },
+
+  { name = "Download 'small' (CPU Friendly)", description = "Downloads ggml-small.bin ~466MB", command = "cd $HOME/whisper.cpp && bash ./models/download-ggml-model.sh small", auto_close_execution = false },
+  
+  { name = "Download 'small.en' (English Only)", description = "Downloads ggml-small.en.bin ~466MB", command = "cd $HOME/whisper.cpp && bash ./models/download-ggml-model.sh small.en", auto_close_execution = false },
+
+  { name = "Download 'large-v3-turbo' (GPU Recommended)", description = "Downloads ggml-large-v3-turbo.bin ~1.5GB. Best accuracy/speed trade-off.", command = "cd $HOME/whisper.cpp && bash ./models/download-ggml-model.sh large-v3-turbo", auto_close_execution = false },
+  
+  { name = "List Models", description = "Show downloaded models in models/ folder.", command = "ls -lh $HOME/whisper.cpp/models/ggml-*.bin", auto_close_execution = false }
+]
+
+#=================================================
+# ┌─ COLUMN C: Transcribe ─────────────────────────────────────────────────┐
+# │ Transcription Tools
+# └────────────────────────────────────────────────────────────────────────┘
+[[commands]]
+name = "🎙️ Transcribe"
+description = "Tools for transcribing audio files."
+col = "C"
+row = 0
+items = [
+  { name = "Transcribe Folder (Client)", description = "Batch transcribe using a running Server (Local or Remote).", command = """
+#!/bin/bash
+read -e -p "📂 Source Audio Folder: " SRC
+read -e -p "📂 Output Text Folder: " DEST
+read -e -p "🌐 Server URL (default: http://127.0.0.1:8080): " URL
+URL=${URL:-http://127.0.0.1:8080}
+
+# Deployed asset location
+SCRIPT="$HOME/.config/drako/assets/transcribe_folder.sh"
+
+bash "$SCRIPT" "$SRC" "$DEST" "$URL"
+""", auto_close_execution = false },
+  
+  { name = "Single File (Custom CLI)", description = "Manually select a file and model arguments (Fallback Mode).", command = """
+#!/bin/bash
+read -e -p "🎵 Input Audio File: " FILE
+read -e -p "🧠 Model (e.g. models/ggml-base.en.bin): " MODEL
+
+# Try standard location
+BINARY="$HOME/whisper.cpp/build/bin/whisper-cli"
+if [ ! -f "$BINARY" ]; then BINARY="$HOME/whisper.cpp/main"; fi
+
+"$BINARY" -m "$HOME/whisper.cpp/$MODEL" -f "$FILE"
+""", auto_close_execution = false },
+
+  { name = "Edit Script", description = "Open the transcription logic script in your default editor.", command = "$EDITOR $HOME/.config/drako/assets/transcribe_folder.sh", auto_close_execution = true }
+]
+
+#=================================================
+# ┌─ COLUMN A (Row 1): Server ─────────────────────────────────────────────┐
+# │ API Server
+# └────────────────────────────────────────────────────────────────────────┘
+[[commands]]
+name = "🌐 API Server"
+description = """
+Launch an OpenAI-compatible API server. 
+Once running, you can interact with it at http://localhost:8080.
+Endpoint: POST /inference
+"""
+col = "A"
+row = 1
+items = [
+  { name = "Start Server (Small)", description = "Host 'small' model on port 8080 (Localhost).", command = """
+#!/bin/bash
+MODEL="$HOME/whisper.cpp/models/ggml-small.bin"
+BINARY="$HOME/whisper.cpp/build/bin/whisper-server"
+if [ ! -f "$BINARY" ]; then BINARY="$HOME/whisper.cpp/server"; fi
+
+if [ ! -f "$MODEL" ]; then echo "❌ Model missing: $MODEL"; exit 1; fi
+if [ ! -f "$BINARY" ]; then echo "❌ Server binary missing. Build first."; exit 1; fi
+
+"$BINARY" -m "$MODEL" --port 8080 --host 127.0.0.1
+""", auto_close_execution = false },
+
+  { name = "Start Server (Large)", description = "Host 'large-v3-turbo' on port 8080 (0.0.0.0 - Accessible remotely!).", command = """
+#!/bin/bash
+MODEL="$HOME/whisper.cpp/models/ggml-large-v3-turbo.bin"
+BINARY="$HOME/whisper.cpp/build/bin/whisper-server"
+if [ ! -f "$BINARY" ]; then BINARY="$HOME/whisper.cpp/server"; fi
+
+if [ ! -f "$MODEL" ]; then echo "❌ Model missing: $MODEL"; exit 1; fi
+if [ ! -f "$BINARY" ]; then echo "❌ Server binary missing. Build first."; exit 1; fi
+
+echo "⚠️  WARNING: Binding to 0.0.0.0 (Accessible to network)"
+"$BINARY" -m "$MODEL" --port 8080 --host 0.0.0.0
+""", auto_close_execution = false },
+
+  { name = "Test API (curl)", description = "Send a test request to localhost:8080.", command = """
+curl 127.0.0.1:8080/inference \
+-H "Content-Type: multipart/form-data" \
+-F file="@$HOME/whisper.cpp/samples/jfk.wav" \
+-F temperature="0.0" \
+-F temperature_inc="0.2" \
+-F response_format="json"
+""", auto_close_execution = false },
+
+  { name = "🛑 Stop All Services", description = "Kill all running whisper servers and streams.", command = """
+echo "🛑 Stopping Services..."
+pkill -f whisper-server && echo "✅ Server stopped."
+pkill -f whisper-stream && echo "✅ Stream stopped."
+pkill -f stream && echo "✅ Stream (legacy) stopped."
+pkill -f server && echo "✅ Server (legacy) stopped."
+echo "Done."
+""", auto_close_execution = false }
+]
+
+#=================================================
+# ┌─ COLUMN C (Row 1): Live ───────────────────────────────────────────────┐
+# │ Real-time Transcription
+# └────────────────────────────────────────────────────────────────────────┘
+[[commands]]
+name = "⚡ Live Transcription"
+description = "Real-time speech-to-text using your microphone."
+col = "C"
+row = 1
+items = [
+  { name = "Check Microphone", description = "Lists devices and runs a 3-second recording/playback test to verify audio input.", command = """
+echo "🎤 Audio Devices (Capture):"
+arecord -l
+echo "---------------------------------------------------"
+echo "🎤 Recording 3 seconds test to /tmp/test_mic.wav..."
+arecord -d 3 -f cd /tmp/test_mic.wav
+if [ $? -eq 0 ]; then
+    echo "🔈 Playing back..."
+    aplay /tmp/test_mic.wav
+else
+    echo "❌ Recording failed."
+fi
+""", auto_close_execution = false },
+
+  { name = "Start Live Stream (Base)", description = "Microphone -> Text (Base Model). Prompts for language.", command = """
+#!/bin/bash
+MODEL="$HOME/whisper.cpp/models/ggml-base.bin"
+BINARY="$HOME/whisper.cpp/build/bin/whisper-stream"
+if [ ! -f "$BINARY" ]; then BINARY="$HOME/whisper.cpp/stream"; fi
+
+if [ ! -f "$MODEL" ]; then echo "❌ Model missing: $MODEL (Download 'base' model)"; exit 1; fi
+if [ ! -f "$BINARY" ]; then echo "❌ Stream binary (whisper-stream) missing. Run 'Install Dependencies' and Rebuild."; exit 1; fi
+
+read -e -p "🗣️  Language (en, de, auto... default: en): " LANG
+LANG=${LANG:-en}
+
+echo "🔴 Starting Stream (Lang: $LANG)... Press Ctrl+C to stop."
+"$BINARY" -m "$MODEL" -l "$LANG" -t 8 --step 0 --length 10000 -vth 0.6
+""", auto_close_execution = false }
+]
