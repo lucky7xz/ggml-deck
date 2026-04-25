@@ -118,7 +118,7 @@ items = [
 
     { name = "Download & Run Gemma-4-E2B-it (CPU)", description = "Downloads the model in the foreground and starts llama.cpp CLI TUI. Model is cached.", command = "set -m; cd $HOME/llama.cpp && ./llama-cli -hf ggml-org/gemma-4-E2B-it-GGUF & fg; stty sane", auto_close_execution = false}
     
-    { name = "Download & Run Kimi-VL-A3B-Thinking (CPU)", description = "Downloads the model in the foreground and starts llama.cpp CLI TUI. ~16GB RAM minimum. Model is cached.", command = "set -m; cd $HOME/llama.cpp && ./llama-cli -hf ggml-org/Kimi-VL-A3B-Thinking-2506-GGUF -c 0 & fg; stty sane", auto_close_execution = false },
+#    { name = "Download & Run Kimi-VL-A3B-Thinking (CPU)", description = "Downloads the model in the foreground and starts llama.cpp CLI TUI. ~16GB RAM minimum. Model is cached.", command = "set -m; cd $HOME/llama.cpp && ./llama-cli -hf ggml-org/Kimi-VL-A3B-Thinking-2506-GGUF -c 0 & fg; stty sane", auto_close_execution = false },
 
     { name = "Download & Run GPT-OSS-20B (GPU)", description = "Downloads GPT-OSS-20B (MXFP4). Optimized for NVIDIA 3060 (12GB). Runs in foreground.", command = "set -m; cd $HOME/llama.cpp && ./llama-cli -hf ggml-org/gpt-oss-20b-GGUF -c 0 -ub 2048 -b 2048 --n-cpu-moe 16 & fg; stty sane", auto_close_execution = false },
     
