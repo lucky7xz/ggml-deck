@@ -63,7 +63,7 @@ items = [
 # │ Transcription Tools
 # └────────────────────────────────────────────────────────────────────────┘
 [[commands]]
-name = "🎙️ Transcribe"
+name = "🎙️ Transcribe [TODO:TDD]"
 description = "Tools for transcribing audio files."
 col = "C"
 row = 0
@@ -178,7 +178,7 @@ else
 fi
 """, auto_close_execution = false },
 
-  { name = "Start Live Stream (Base)", description = "Microphone -> Text (Base Model). Prompts for language.", command = """
+  { name = "Start Live Stream Test (Base)", description = "Microphone -> Text (Base Model). Prompts for language. Please note that this is for testing purposes only. The model is wrapped in an script that is highly detremental compared to processing a readily recorded .wav file.", command = """
 #!/bin/bash
 MODEL="$HOME/whisper.cpp/models/ggml-base.bin"
 BINARY="$HOME/whisper.cpp/build/bin/whisper-stream"
