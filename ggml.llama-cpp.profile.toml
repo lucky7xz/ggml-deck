@@ -12,9 +12,6 @@ X = 3
 Y = 3
 # └────────────────────────────────────────────────┘
 
-
-
-
 #=================================================
 # ┌─ COLUMN A: Setup ──────────────────────────────────────────────────────┐
 # │ Download/Compile llama.cpp from source and manage the build directory.
@@ -118,10 +115,12 @@ items = [
 
     { name = "Download & Run Gemma-4-E2B-it (CPU)", description = "Downloads the model in the foreground and starts llama.cpp CLI TUI. Model is cached.", command = "set -m; cd $HOME/llama.cpp && ./llama-cli -hf ggml-org/gemma-4-E2B-it-GGUF & fg; stty sane", auto_close_execution = false},
     
+    
 #    { name = "Download & Run Kimi-VL-A3B-Thinking (CPU)", description = "Downloads the model in the foreground and starts llama.cpp CLI TUI. ~16GB RAM minimum. Model is cached.", command = "set -m; cd $HOME/llama.cpp && ./llama-cli -hf ggml-org/Kimi-VL-A3B-Thinking-2506-GGUF -c 0 & fg; stty sane", auto_close_execution = false },
 
-    { name = "Download & Run GPT-OSS-20B (GPU)", description = "Downloads GPT-OSS-20B (MXFP4). Optimized for NVIDIA 3060 (12GB). Runs in foreground.", command = "set -m; cd $HOME/llama.cpp && ./llama-cli -hf ggml-org/gpt-oss-20b-GGUF -c 0 -ub 2048 -b 2048 --n-cpu-moe 16 & fg; stty sane", auto_close_execution = false },
+#    { name = "Download & Run GPT-OSS-20B (GPU)", description = "Downloads GPT-OSS-20B (MXFP4). Optimized for NVIDIA 3060 (12GB). Runs in foreground.", command = "set -m; cd $HOME/llama.cpp && ./llama-cli -hf ggml-org/gpt-oss-20b-GGUF -c 0 -ub 2048 -b 2048 --n-cpu-moe 16 & fg; stty sane", auto_close_execution = false },
     
+    { name = "Download & Run Gemma-4-26B-A4B-it-GGUF (GPU)", description = "Downloads the model in the foreground and starts llama.cpp CLI TUI. Model is cached.", command = "set -m; cd $HOME/llama.cpp && ./llama-cli -hf ggml-org/gemma-4-26B-A4B-it-GGUF & fg; stty sane", auto_close_execution = false},
     
     { name = "Download & Run Qwen3-Coder-30B-A3B (GPU)", description = "Downloads GPT-OSS-20B (MXFP4). Optimized for NVIDIA 3060 (12GB). Runs in foreground.", command = "set -m; cd $HOME/llama.cpp && ./llama-cli -hf ggml-org/Qwen3-Coder-30B-A3B-Instruct-Q8_0-GGUF -c 0 & fg; stty sane", auto_close_execution = false },
 
@@ -159,12 +158,12 @@ else
 fi
 """, auto_close_execution = false },
 
-    { name = "Start Kimi-VL-A3B-Thinking WebUI Server (CPU)", description = "Launches the Kimi-VL-A3B-Thinking model WebUI. Downloads in foreground if missing.", command = """
-if ! find ~/.cache/llama.cpp -name "*Kimi-VL-A3B-Thinking-2506-GGUF*.gguf" -print -quit | grep -q .; then
+    { name = "Start Gemma-4-E2B-it WebUI Server (CPU)", description = "Launches the Gemma-4-E2B-it model WebUI. Downloads in foreground if missing.", command = """
+if ! find ~/.cache/llama.cpp -name "*gemma-4-E2B-it-GGUF*.gguf" -print -quit | grep -q .; then
     echo "⚠️  Model not found. Downloading and running in FOREGROUND..."
-    cd $HOME/llama.cpp && ./llama-server -hf ggml-org/Kimi-VL-A3B-Thinking-2506-GGUF --jinja -c 0 --host 127.0.0.1 --port 8033
+    cd $HOME/llama.cpp && ./llama-server -hf ggml-org/gemma-4-E2B-it-GGUF --jinja -c 0 --host 127.0.0.1 --port 8033
 else
-    cd $HOME/llama.cpp && ./llama-server -hf ggml-org/Kimi-VL-A3B-Thinking-2506-GGUF --jinja -c 0 --host 127.0.0.1 --port 8033 > ~/llama.cpp/server.log 2>&1 &
+    cd $HOME/llama.cpp && ./llama-server -hf ggml-org/gemma-4-E2B-it-GGUF --jinja -c 0 --host 127.0.0.1 --port 8033 > ~/llama.cpp/server.log 2>&1 &
     PID=$!
     echo "⏳ Starting server (PID $PID)... waiting 3s..."
     sleep 3
@@ -204,6 +203,29 @@ else
     fi
 fi
 """, auto_close_execution = false },
+
+    { name = "Start Gemma-4-26B-A4B-it-GGUF WebUI Server (GPU)", description = "Launches the Gemma-4-26B-A4B-it model WebUI. Downloads in foreground if missing.", command = """
+if ! find ~/.cache/llama.cpp -name "*gemma-4-26B-A4B-it-GGUF*.gguf" -print -quit | grep -q .; then
+    echo "⚠️  Model not found. Downloading and running in FOREGROUND..."
+    cd $HOME/llama.cpp && ./llama-server -hf ggml-org/gemma-4-26B-A4B-it-GGUF --jinja -c 0 --host 0.0.0.0 --port 8033
+else
+    cd $HOME/llama.cpp && ./llama-server -hf ggml-org/gemma-4-26B-A4B-it-GGUF --jinja -c 0 --host 0.0.0.0 --port 8033 > ~/llama.cpp/server.log 2>&1 &
+    PID=$!
+    echo "⏳ Starting server (PID $PID)... waiting 3s..."
+    sleep 3
+    if ps -p $PID > /dev/null; then
+        echo "✅ SUCCESS: Server process started (Background)"
+        echo "   - PID: $PID"
+        echo "   - WebUI: http://0.0.0.0:8033"
+        echo "   - Logs: ~/llama.cpp/server.log"
+        echo "💡 Monitor usage with 'btop'. Stop via 'Stop All Services'."
+    else
+        echo "❌ FAILURE: Server process died."
+        echo "🔍 Last 10 lines of ~/llama.cpp/server.log:"
+        tail -n 10 "$HOME/llama.cpp/server.log"
+    fi
+fi
+""", auto_close_execution = false},
     
     { name = "Start GPU Server GPT-OSS-120B WebUI Server (GPU)", description = "Launches GPT-OSS-120B. Optimized for NVIDIA 3060 (12GB) with >40 GB system RAM. Downloads in foreground if missing.", command = """
 if ! find ~/.cache/llama.cpp -name "*gpt-oss-120b-GGUF*.gguf" -print -quit | grep -q .; then
