@@ -136,7 +136,7 @@ items = [
     {name = "Open Local WebUI", description = "Opens the LLamaCPP WebUI address in your Browser.", command = "xdg-open http://127.0.0.1:8033/ > /dev/null 2>&1 &"},
 
     { name = "Start Qwen2.5-Omni-3B-GGUF WebUI Server (CPU)", description = "Launches the Qwen2.5-Omni-3B-GGUF model WebUI. Downloads in foreground if missing.", command = """
-if ! find ~/.cache/llama.cpp -name "*Qwen2.5-Omni-3B-GGUF*.gguf" -print -quit | grep -q .; then
+if ! find ~/.cache/huggingface/hub/ -name "*Qwen2.5-Omni-3B-GGUF*" -print -quit | grep -q .; then
     echo "⚠️  Model not found. Downloading and running in FOREGROUND..."
     cd $HOME/llama.cpp && ./llama-server -hf ggml-org/Qwen2.5-Omni-3B-GGUF --jinja -c 0 --host 127.0.0.1 --port 8033
 else
@@ -159,7 +159,7 @@ fi
 """, auto_close_execution = false },
 
     { name = "Start Gemma-4-E2B-it WebUI Server (CPU)", description = "Launches the Gemma-4-E2B-it model WebUI. Downloads in foreground if missing.", command = """
-if ! find ~/.cache/llama.cpp -name "*gemma-4-E2B-it-GGUF*.gguf" -print -quit | grep -q .; then
+if ! find ~/.cache/huggingface/hub/ -name "*gemma-4-E2B-it-GGUF*" -print -quit | grep -q .; then
     echo "⚠️  Model not found. Downloading and running in FOREGROUND..."
     cd $HOME/llama.cpp && ./llama-server -hf ggml-org/gemma-4-E2B-it-GGUF --jinja -c 0 --host 127.0.0.1 --port 8033
 else
@@ -182,7 +182,7 @@ fi
 """, auto_close_execution = false},
 
     { name = "Start GPU Server GPT-OSS-20B WebUI Server (GPU)", description = "Launches GPT-OSS-20B WebUI. Optimized for NVIDIA 3060 (12GB). Downloads in foreground if missing.", command = """
-if ! find ~/.cache/llama.cpp -name "*gpt-oss-20b-GGUF*.gguf" -print -quit | grep -q .; then
+if ! find ~/.cache/huggingface/hub/ -name "*gpt-oss-20b-GGUF*" -print -quit | grep -q .; then
     echo "⚠️  Model not found. Downloading and running in FOREGROUND..."
     cd $HOME/llama.cpp && ./llama-server -hf ggml-org/gpt-oss-20b-GGUF --jinja -c 0 -b 2048 -ub 2048 --n-cpu-moe 16 --host 0.0.0.0 --port 8033
 else
@@ -205,7 +205,7 @@ fi
 """, auto_close_execution = false },
 
     { name = "Start Gemma-4-26B-A4B-it-GGUF WebUI Server (GPU)", description = "Launches the Gemma-4-26B-A4B-it model WebUI. Downloads in foreground if missing.", command = """
-if ! find ~/.cache/llama.cpp -name "*gemma-4-26B-A4B-it-GGUF*.gguf" -print -quit | grep -q .; then
+if ! find ~/.cache/huggingface/hub/ -name "*gemma-4-26B-A4B-it-GGUF*" -print -quit | grep -q .; then
     echo "⚠️  Model not found. Downloading and running in FOREGROUND..."
     cd $HOME/llama.cpp && ./llama-server -hf ggml-org/gemma-4-26B-A4B-it-GGUF --jinja -c 0 --host 0.0.0.0 --port 8033
 else
@@ -228,7 +228,7 @@ fi
 """, auto_close_execution = false},
     
     { name = "Start GPU Server GPT-OSS-120B WebUI Server (GPU)", description = "Launches GPT-OSS-120B. Optimized for NVIDIA 3060 (12GB) with >40 GB system RAM. Downloads in foreground if missing.", command = """
-if ! find ~/.cache/llama.cpp -name "*gpt-oss-120b-GGUF*.gguf" -print -quit | grep -q .; then
+if ! find ~/.cache/huggingface/hub/ -name "*gpt-oss-120b-GGUF*" -print -quit | grep -q .; then
     echo "⚠️  Model not found. Downloading and running in FOREGROUND..."
     cd $HOME/llama.cpp && ./llama-server -hf ggml-org/gpt-oss-120b-GGUF --jinja -c 0 -b 2048 -ub 2048 --n-cpu-moe 35 --host 0.0.0.0 --port 8033
 else
