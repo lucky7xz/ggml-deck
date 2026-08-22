@@ -6,11 +6,15 @@
 # │ building from source, running local servers, managing Docker containers*,  │
 # │ and accessing documentation.                                               │
 # └────────────────────────────────────────────────────────────────────────────┘
-#  *TODO
 # ┌─ Grid Dimensions ──────────────────────────────┐
 X = 3
 Y = 3
 # └────────────────────────────────────────────────┘
+
+# ┌─ Shipped Assets ───────────────────────────────────────────────────────────┐
+# │ Copied on summon to ~/.config/drako/assets/ggml.llama-cpp/                 │
+# └────────────────────────────────────────────────────────────────────────────┘
+assets = ["serve.sh", "models.sh"]
 
 #=================================================
 # ┌─ COLUMN A: Setup ──────────────────────────────────────────────────────┐
@@ -47,33 +51,33 @@ else
 fi
 """, auto_close_execution = false },
 
-  { name = " -- Open Build Docs -- ", description ="TODO!", command = "xdg-open https://github.com/ggml-org/llama.cpp/blob/master/docs/build.md >/dev/null 2>&1 &" },
+  { name = " -- Open Build Docs -- ", description ="Opens the official llama.cpp build guide (CUDA, Metal, Vulkan, BLAS) in your browser. Read this before using the compile commands below.", command = "xdg-open https://github.com/ggml-org/llama.cpp/blob/master/docs/build.md >/dev/null 2>&1 &" },
 
-  { name = "Clone Source", description ="TODO!", command = "git clone https://github.com/ggml-org/llama.cpp.git", auto_close_execution = false },
-  
-  { name = "cmake w/ CUDA", description ="TODO!", command = "cmake -DGGML_CURA=ON", auto_close_execution = false },
+  { name = "Clone Source", description ="Clones the llama.cpp source into a 'llama.cpp' folder in the current directory. Only needed if you compile from source instead of using a release binary.", command = "git clone https://github.com/ggml-org/llama.cpp.git", auto_close_execution = false },
 
-  { name = "cmake build", description ="TODO!", command = """
- 
+  { name = "cmake w/ CUDA", description ="Configuration step only, run from inside the cloned source folder. Note that 'cmake build' below already does this, so you rarely need it on its own.", command = "cmake -B build -DGGML_CUDA=ON", auto_close_execution = false },
+
+  { name = "cmake build", description ="Configures and compiles a CUDA build from inside the cloned source folder. Binaries land in ./build/bin, but the rest of this deck expects them directly in ~/llama.cpp — copy them up after the build.", command = """
+
   cmake -B build -DGGML_CUDA=ON
   cmake --build build --config Release
-  
+
   """, auto_close_execution = false },
 
-  { name = "nvcc version", description ="TODO!", command = "nvcc --version", auto_close_execution = false },
-  
-  { name = "apt cuda and cmake", description ="TODO!", command = "sudo apt update && sudo apt install nvidia-cuda-toolkit cmake", auto_close_execution = false },
+  { name = "nvcc version", description ="Prints the CUDA compiler version. Use it to confirm the CUDA toolkit is installed before attempting a GPU build.", command = "nvcc --version", auto_close_execution = false },
+
+  { name = "apt cuda and cmake", description ="Installs the CUDA toolkit and cmake via apt (Debian/Ubuntu only). Prompts for your sudo password.", command = "sudo apt update && sudo apt install nvidia-cuda-toolkit cmake", auto_close_execution = false },
 
   
 ]
 
 [[commands]]
 name = "🛑 Stop All Services"
-description = "Stops all running llama-server processes."
+description = "Stops all running llama-server and llama-cli processes."
 col = "A"
 row = 2
 items = [
-  { name = "Stop All Servers", description = "Finds and terminates all running llama-server instances.", command = '''
+  { name = "Stop All Servers", description = "Terminates every llama-server and llama-cli process by exact binary name, then waits 3s and reports anything still running.", command = '''
 #!/bin/bash
 # Use -x (exact match) to target the binary names specifically.
 # This prevents matching this script's own command line arguments.
@@ -103,11 +107,11 @@ exit 0
 # └─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┘
 [[commands]]
 name = "🦙 Quick Start (TUI)"
-description = "Launch a command to download models. These commands run in the foreground so you can see download progress. Once the model download is complete (TUI starts), you can safely Ctrl+C. Models are saved to ~/.cache/llama.cpp."
+description = "Launch a command to download models. These commands run in the foreground so you can see download progress. Once the model download is complete (TUI starts), you can safely Ctrl+C. Models are saved to ~/.cache/huggingface/hub."
 col = "B"
 row = 0
 items = [
-    { name = "Browse Models", description = "Browse models on Huggingface Websote.", command ="xdg-open https://huggingface.co/ggml-org > /dev/null 2>&1 &"},
+    { name = "Browse Models", description = "Opens the ggml-org collection on Hugging Face, the source of the GGUF repos used below.", command ="xdg-open https://huggingface.co/ggml-org > /dev/null 2>&1 &"},
     
     { name = "Download & Run Qwen3-0.6B (CPU)", description = "Downloads the model in the foreground and starts llama.cpp CLI TUI. Model is cached.", command = "set -m; cd $HOME/llama.cpp && ./llama-cli -hf ggml-org/Qwen3-0.6B-GGUF & fg; stty sane", auto_close_execution = false },
     
@@ -122,133 +126,50 @@ items = [
     
     { name = "Download & Run Gemma-4-26B-A4B-it-GGUF (GPU)", description = "Downloads the model in the foreground and starts llama.cpp CLI TUI. Model is cached.", command = "set -m; cd $HOME/llama.cpp && ./llama-cli -hf ggml-org/gemma-4-26B-A4B-it-GGUF & fg; stty sane", auto_close_execution = false},
     
-    { name = "Download & Run Qwen3-Coder-30B-A3B (GPU)", description = "Downloads GPT-OSS-20B (MXFP4). Optimized for NVIDIA 3060 (12GB). Runs in foreground.", command = "set -m; cd $HOME/llama.cpp && ./llama-cli -hf ggml-org/Qwen3-Coder-30B-A3B-Instruct-Q8_0-GGUF -c 0 & fg; stty sane", auto_close_execution = false },
+    { name = "Download & Run Qwen3-Coder-30B-A3B (GPU)", description = "Downloads Qwen3-Coder-30B-A3B-Instruct (Q8_0) in the foreground and starts the llama.cpp CLI TUI with the full context window (-c 0). No MoE CPU offload is set, so this needs enough VRAM or it will spill. Model is cached.", command = "set -m; cd $HOME/llama.cpp && ./llama-cli -hf ggml-org/Qwen3-Coder-30B-A3B-Instruct-Q8_0-GGUF -c 0 & fg; stty sane", auto_close_execution = false },
 
     { name = "Download & Run GPT-OSS-120B (GPU)", description = "Downloads GPT-OSS-120B (MXFP4). Optimized for NVIDIA 3060 (12GB) with >40GB System RAM. Runs in foreground.", command = "set -m; cd $HOME/llama.cpp && ./llama-cli -hf ggml-org/gpt-oss-120b-GGUF -c 0 -ub 2048 -b 2048 --n-cpu-moe 35 & fg; stty sane", auto_close_execution = false },
 ]
 
 [[commands]]
 name = "🌐 Launch WebUI Service"
-description = "Assumes models are already downloaded. Please note that all the commands below run in the background. All commands use the following WebUI link :  http://127.0.0.1:8033"
+description = """
+Each command starts one llama-server. A cached model launches in the background; a model that is not cached yet downloads in the foreground first, so you can watch progress. Every server listens on port 8033 and is reachable at http://127.0.0.1:8033 — the bind host is set per command (--host 127.0.0.1 for loopback only, --host 0.0.0.0 to also expose it on your LAN).
+
+To add a model, copy any line below and change the repo id and the flags:
+  serve.sh <hf-repo-id> [llama-server flags...]
+serve.sh handles the cache check, the foreground download, the background launch and the PID/log report. See 'View serve.sh' in Documentation.
+
+First run after a summon: use 'Make Scripts Executable' once — drako copies assets without the executable bit.
+"""
 col = "B"
 row = 1
 items = [
     {name = "Open Local WebUI", description = "Opens the LLamaCPP WebUI address in your Browser.", command = "xdg-open http://127.0.0.1:8033/ > /dev/null 2>&1 &"},
 
-    { name = "Start Qwen2.5-Omni-3B-GGUF WebUI Server (CPU)", description = "Launches the Qwen2.5-Omni-3B-GGUF model WebUI. Downloads in foreground if missing.", command = """
-if ! find ~/.cache/huggingface/hub/ -name "*Qwen2.5-Omni-3B-GGUF*" -print -quit | grep -q .; then
-    echo "⚠️  Model not found. Downloading and running in FOREGROUND..."
-    cd $HOME/llama.cpp && ./llama-server -hf ggml-org/Qwen2.5-Omni-3B-GGUF --jinja -c 0 --host 127.0.0.1 --port 8033
-else
-    cd $HOME/llama.cpp && ./llama-server -hf ggml-org/Qwen2.5-Omni-3B-GGUF --jinja -c 0 --host 127.0.0.1 --port 8033 > ~/llama.cpp/server.log 2>&1 &
-    PID=$!
-    echo "⏳ Starting server (PID $PID)... waiting 3s..."
-    sleep 3
-    if ps -p $PID > /dev/null; then
-        echo "✅ SUCCESS: Server process started (Background)"
-        echo "   - PID: $PID"
-        echo "   - WebUI: http://127.0.0.1:8033"
-        echo "   - Logs: ~/llama.cpp/server.log"
-        echo "💡 Monitor usage with 'btop'. Stop via 'Stop All Services'."
-    else
-        echo "❌ FAILURE: Server process died."
-        echo "🔍 Last 10 lines of ~/llama.cpp/server.log:"
-        tail -n 10 "$HOME/llama.cpp/server.log"
-    fi
+    { name = "🔧 Make Scripts Executable", description = "Run this once after summoning the deck. Drako copies assets without the executable bit, so serve.sh and models.sh both need +x before the server commands below, or List Models and Launch Cached Model, will run.", command = """
+#!/bin/bash
+DIR="$HOME/.config/drako/assets/ggml.llama-cpp"
+shopt -s nullglob
+scripts=("$DIR"/*.sh)
+if [ ${#scripts[@]} -eq 0 ]; then
+    echo "❌ No scripts found in: $DIR"
+    echo "💡 Assets are copied by 'drako summon'. Re-summon the deck to deploy them."
+    exit 1
 fi
+chmod +x "${scripts[@]}" && echo "✅ Made executable:"
+ls -l "${scripts[@]}"
 """, auto_close_execution = false },
 
-    { name = "Start Gemma-4-E2B-it WebUI Server (CPU)", description = "Launches the Gemma-4-E2B-it model WebUI. Downloads in foreground if missing.", command = """
-if ! find ~/.cache/huggingface/hub/ -name "*gemma-4-E2B-it-GGUF*" -print -quit | grep -q .; then
-    echo "⚠️  Model not found. Downloading and running in FOREGROUND..."
-    cd $HOME/llama.cpp && ./llama-server -hf ggml-org/gemma-4-E2B-it-GGUF --jinja -c 0 --host 127.0.0.1 --port 8033
-else
-    cd $HOME/llama.cpp && ./llama-server -hf ggml-org/gemma-4-E2B-it-GGUF --jinja -c 0 --host 127.0.0.1 --port 8033 > ~/llama.cpp/server.log 2>&1 &
-    PID=$!
-    echo "⏳ Starting server (PID $PID)... waiting 3s..."
-    sleep 3
-    if ps -p $PID > /dev/null; then
-        echo "✅ SUCCESS: Server process started (Background)"
-        echo "   - PID: $PID"
-        echo "   - WebUI: http://127.0.0.1:8033"
-        echo "   - Logs: ~/llama.cpp/server.log"
-        echo "💡 Monitor usage with 'btop'. Stop via 'Stop All Services'."
-    else
-        echo "❌ FAILURE: Server process died."
-        echo "🔍 Last 10 lines of ~/llama.cpp/server.log:"
-        tail -n 10 "$HOME/llama.cpp/server.log"
-    fi
-fi
-""", auto_close_execution = false},
+    { name = "Start Qwen2.5-Omni-3B-GGUF WebUI Server (CPU)", description = "Launches the Qwen2.5-Omni-3B-GGUF model WebUI. Downloads in foreground if missing.", command = "~/.config/drako/assets/ggml.llama-cpp/serve.sh ggml-org/Qwen2.5-Omni-3B-GGUF --jinja -c 0 --host 127.0.0.1 --port 8033", auto_close_execution = false },
 
-    { name = "Start GPU Server GPT-OSS-20B WebUI Server (GPU)", description = "Launches GPT-OSS-20B WebUI. Optimized for NVIDIA 3060 (12GB). Downloads in foreground if missing.", command = """
-if ! find ~/.cache/huggingface/hub/ -name "*gpt-oss-20b-GGUF*" -print -quit | grep -q .; then
-    echo "⚠️  Model not found. Downloading and running in FOREGROUND..."
-    cd $HOME/llama.cpp && ./llama-server -hf ggml-org/gpt-oss-20b-GGUF --jinja -c 0 -b 2048 -ub 2048 --n-cpu-moe 16 --host 0.0.0.0 --port 8033
-else
-    cd $HOME/llama.cpp && ./llama-server -hf ggml-org/gpt-oss-20b-GGUF --jinja -c 0 -b 2048 -ub 2048 --n-cpu-moe 16 --host 0.0.0.0 --port 8033 > ~/llama.cpp/server.log 2>&1 &
-    PID=$!
-    echo "⏳ Starting server (PID $PID)... waiting 3s..."
-    sleep 3
-    if ps -p $PID > /dev/null; then
-        echo "✅ SUCCESS: Server process started (Background)"
-        echo "   - PID: $PID"
-        echo "   - WebUI: http://0.0.0.0:8033"
-        echo "   - Logs: ~/llama.cpp/server.log"
-        echo "💡 Monitor usage with 'btop'. Stop via 'Stop All Services'."
-    else
-        echo "❌ FAILURE: Server process died."
-        echo "🔍 Last 10 lines of ~/llama.cpp/server.log:"
-        tail -n 10 "$HOME/llama.cpp/server.log"
-    fi
-fi
-""", auto_close_execution = false },
+    { name = "Start Gemma-4-E2B-it WebUI Server (CPU)", description = "Launches the Gemma-4-E2B-it model WebUI. Downloads in foreground if missing.", command = "~/.config/drako/assets/ggml.llama-cpp/serve.sh ggml-org/gemma-4-E2B-it-GGUF --jinja -c 0 --host 127.0.0.1 --port 8033", auto_close_execution = false},
 
-    { name = "Start Gemma-4-26B-A4B-it-GGUF WebUI Server (GPU)", description = "Launches the Gemma-4-26B-A4B-it model WebUI. Downloads in foreground if missing.", command = """
-if ! find ~/.cache/huggingface/hub/ -name "*gemma-4-26B-A4B-it-GGUF*" -print -quit | grep -q .; then
-    echo "⚠️  Model not found. Downloading and running in FOREGROUND..."
-    cd $HOME/llama.cpp && ./llama-server -hf ggml-org/gemma-4-26B-A4B-it-GGUF --jinja -c 0 --host 0.0.0.0 --port 8033
-else
-    cd $HOME/llama.cpp && ./llama-server -hf ggml-org/gemma-4-26B-A4B-it-GGUF --jinja -c 0 --host 0.0.0.0 --port 8033 > ~/llama.cpp/server.log 2>&1 &
-    PID=$!
-    echo "⏳ Starting server (PID $PID)... waiting 3s..."
-    sleep 3
-    if ps -p $PID > /dev/null; then
-        echo "✅ SUCCESS: Server process started (Background)"
-        echo "   - PID: $PID"
-        echo "   - WebUI: http://0.0.0.0:8033"
-        echo "   - Logs: ~/llama.cpp/server.log"
-        echo "💡 Monitor usage with 'btop'. Stop via 'Stop All Services'."
-    else
-        echo "❌ FAILURE: Server process died."
-        echo "🔍 Last 10 lines of ~/llama.cpp/server.log:"
-        tail -n 10 "$HOME/llama.cpp/server.log"
-    fi
-fi
-""", auto_close_execution = false},
-    
-    { name = "Start GPU Server GPT-OSS-120B WebUI Server (GPU)", description = "Launches GPT-OSS-120B. Optimized for NVIDIA 3060 (12GB) with >40 GB system RAM. Downloads in foreground if missing.", command = """
-if ! find ~/.cache/huggingface/hub/ -name "*gpt-oss-120b-GGUF*" -print -quit | grep -q .; then
-    echo "⚠️  Model not found. Downloading and running in FOREGROUND..."
-    cd $HOME/llama.cpp && ./llama-server -hf ggml-org/gpt-oss-120b-GGUF --jinja -c 0 -b 2048 -ub 2048 --n-cpu-moe 35 --host 0.0.0.0 --port 8033
-else
-    cd $HOME/llama.cpp && ./llama-server -hf ggml-org/gpt-oss-120b-GGUF --jinja -c 0 -b 2048 -ub 2048 --n-cpu-moe 35 --host 0.0.0.0 --port 8033 > ~/llama.cpp/server.log 2>&1 &
-    PID=$!
-    echo "⏳ Starting server (PID $PID)... waiting 3s..."
-    sleep 3
-    if ps -p $PID > /dev/null; then
-        echo "✅ SUCCESS: Server process started (Background)"
-        echo "   - PID: $PID"
-        echo "   - WebUI: http://0.0.0.0:8033"
-        echo "   - Logs: ~/llama.cpp/server.log"
-        echo "💡 Monitor usage with 'btop'. Stop via 'Stop All Services'."
-    else
-        echo "❌ FAILURE: Server process died."
-        echo "🔍 Last 10 lines of ~/llama.cpp/server.log:"
-        tail -n 10 "$HOME/llama.cpp/server.log"
-    fi
-fi
-""", auto_close_execution = false },
+    { name = "Start GPU Server GPT-OSS-20B WebUI Server (GPU)", description = "Launches GPT-OSS-20B WebUI. Optimized for NVIDIA 3060 (12GB). Downloads in foreground if missing.", command = "~/.config/drako/assets/ggml.llama-cpp/serve.sh ggml-org/gpt-oss-20b-GGUF --jinja -c 0 -b 2048 -ub 2048 --n-cpu-moe 16 --host 0.0.0.0 --port 8033", auto_close_execution = false },
+
+    { name = "Start Gemma-4-26B-A4B-it-GGUF WebUI Server (GPU)", description = "Launches the Gemma-4-26B-A4B-it model WebUI. Downloads in foreground if missing.", command = "~/.config/drako/assets/ggml.llama-cpp/serve.sh ggml-org/gemma-4-26B-A4B-it-GGUF --jinja -c 0 --host 0.0.0.0 --port 8033", auto_close_execution = false},
+
+    { name = "Start GPU Server GPT-OSS-120B WebUI Server (GPU)", description = "Launches GPT-OSS-120B. Optimized for NVIDIA 3060 (12GB) with >40 GB system RAM. Downloads in foreground if missing.", command = "~/.config/drako/assets/ggml.llama-cpp/serve.sh ggml-org/gpt-oss-120b-GGUF --jinja -c 0 -b 2048 -ub 2048 --n-cpu-moe 35 --host 0.0.0.0 --port 8033", auto_close_execution = false },
 
 ]
 
@@ -258,17 +179,14 @@ fi
 # └─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┘
 [[commands]]
 name = "💾 Manage Models"
-description = "Manage GGUF models downloaded to the local cache (~/.cache/llama.cpp)."
+description = "Inspect, launch and delete GGUF models in the Hugging Face cache (~/.cache/huggingface/hub). 'Launch Cached Model' runs anything listed here without editing this profile. Needs 'Make Scripts Executable' once after a summon."
 col = "C"
 row = 0
 items = [
-    { name = "List Models", description = "List all GGUF models and their sizes.", command = """
-#!/bin/bash
-echo "📂 Location: ~/.cache/huggingface/hub/"
-echo "---------------------------------------------------"
-du -sh ~/.cache/huggingface/hub/models--* 2>/dev/null | awk '{print $1, $2}' | sed "s|$HOME/.cache/huggingface/hub/||"
-echo "---------------------------------------------------"
-""", auto_close_execution = false },
+    { name = "List Models", description = "Lists one row per cached quant, largest first. Each row is a ready-to-paste -hf argument (provider/model:QUANT) you can drop straight into a serve.sh command. A repo holding two quants shows as two rows, not one summed line. Abandoned part-downloads are listed separately, since they are not usable.", command = "~/.config/drako/assets/ggml.llama-cpp/models.sh list", auto_close_execution = false },
+
+    { name = "🚀 Launch Cached Model", description = "Pick any cached model and run it, without editing this profile. Asks three things: which model (chosen from the cache, or a repo id you type), server or TUI, and \u2014 for a server \u2014 whether to bind 127.0.0.1 or 0.0.0.0. Launches with the deck's standard flags (--jinja -c 0 --port 8033 for a server, -c 0 for the TUI); it does NOT set --n-cpu-moe or batch tuning, so for large MoE models on a small GPU use the dedicated cells in 'Launch WebUI Service' instead.", command = "~/.config/drako/assets/ggml.llama-cpp/models.sh launch", auto_close_execution = false },
+
     { name = "Remove Model", description = "Select a model folder to delete entirely from the Hugging Face cache.", command = """
 #!/bin/bash
 CACHE_DIR="$HOME/.cache/huggingface/hub"
@@ -304,7 +222,9 @@ col = "C"
 row = 1
 items = [
     { name = "Open llama.cpp GitHub", description = "Explore the source code and latest updates.", command = "xdg-open https://github.com/ggerganov/llama.cpp >/dev/null 2>&1 &" },
-    { name = "Learn about GGUF", description = "Read about the GGUF model format.", command = "xdg-open https://github.com/ggerganov/ggml/blob/master/docs/gguf.md >/dev/null 2>&1 &"}
+    { name = "Learn about GGUF", description = "Read about the GGUF model format.", command = "xdg-open https://github.com/ggerganov/ggml/blob/master/docs/gguf.md >/dev/null 2>&1 &"},
+    { name = "View serve.sh", description = "The WebUI server launcher used by every model cell.", command = "cat ~/.config/drako/assets/ggml.llama-cpp/serve.sh", auto_close_execution = false },
+    { name = "View models.sh", description = "The cache reader behind 'List Models' and the 'Launch Cached Model' picker.", command = "cat ~/.config/drako/assets/ggml.llama-cpp/models.sh", auto_close_execution = false }
 ]
 
 [[commands]]
@@ -313,9 +233,9 @@ description = "Measure model performance with llama-bench."
 col = "C"
 row = 2
 items = [
-    { name = "Run Benchmark", description = "Prompts for a model path and parameters to run a benchmark.", command = """
+    { name = "Run Benchmark", description = "Prompts for a Hugging Face repo id (not a file path) plus thread and GPU-layer counts, then runs llama-bench in the background. Results go to ~/llama.cpp/server.log, not to this window.", command = """
 #!/bin/bash
-read -p 'Enter path to GGUF model file: ' model_path
+read -p 'Enter Hugging Face repo id (e.g. ggml-org/Qwen3-0.6B-GGUF): ' model_path
 read -p 'Enter number of threads (e.g., 8): ' threads
 read -p 'Enter number of GPU layers (e.g., 35): ' ngl
 $HOME/llama.cpp/build/bin/llama-bench -hf "$model_path" -t "$threads" -ngl "$ngl" > ~/llama.cpp/server.log 2>&1 &
