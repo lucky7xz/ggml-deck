@@ -60,7 +60,7 @@ fi
   { name = "cmake build", description ="Configures and compiles a CUDA build from inside the cloned source folder. Binaries land in ./build/bin, but the rest of this deck expects them directly in ~/llama.cpp — copy them up after the build.", command = """
 
   cmake -B build -DGGML_CUDA=ON
-  cmake --build build --config Release
+  cmake --build build --config Release -j
 
   """, auto_close_execution = false },
 
@@ -69,6 +69,46 @@ fi
   { name = "apt cuda and cmake", description ="Installs the CUDA toolkit and cmake via apt (Debian/Ubuntu only). Prompts for your sudo password.", command = "sudo apt update && sudo apt install nvidia-cuda-toolkit cmake", auto_close_execution = false },
 
   
+]
+
+[[commands]]
+name = "🔧 Deck Scripts"
+description = "The deck ships two scripts, serve.sh and models.sh, copied to ~/.config/drako/assets/ggml.llama-cpp/ when you summon it. Drako copies assets without the executable bit, so run 'Make Scripts Executable' once after every summon — until you do, the WebUI server commands, List Models and Launch Cached Model will all fail with 'Permission denied'."
+col = "A"
+row = 1
+items = [
+  { name = "🔧 Make Scripts Executable", description = "Adds +x to every .sh in the deck's asset folder. Run once after a summon, and again after any re-summon.", command = """
+#!/bin/bash
+DIR="$HOME/.config/drako/assets/ggml.llama-cpp"
+shopt -s nullglob
+scripts=("$DIR"/*.sh)
+if [ ${#scripts[@]} -eq 0 ]; then
+    echo "❌ No scripts found in: $DIR"
+    echo "💡 Assets are copied by 'drako summon'. Re-summon the deck to deploy them."
+    exit 1
+fi
+chmod +x "${scripts[@]}" && echo "✅ Made executable:"
+ls -l "${scripts[@]}"
+""", auto_close_execution = false },
+
+  { name = "🔍 Check Scripts", description = "Lists the deployed scripts and their permissions without changing anything, so you can see whether the +x step is still needed.", command = """
+#!/bin/bash
+DIR="$HOME/.config/drako/assets/ggml.llama-cpp"
+echo "📂 $DIR"
+echo "-----------------------------------------------"
+shopt -s nullglob
+scripts=("$DIR"/*.sh)
+if [ ${#scripts[@]} -eq 0 ]; then
+    echo "❌ No scripts deployed. Re-summon the deck."
+    exit 1
+fi
+ERR=0
+for s in "${scripts[@]}"; do
+    if [ -x "$s" ]; then echo "✅ executable: ${s##*/}"; else echo "❌ not executable: ${s##*/}"; ERR=1; fi
+done
+echo "-----------------------------------------------"
+[ "$ERR" = "1" ] && echo "💡 Run 'Make Scripts Executable'." || echo "🚀 All set."
+""", auto_close_execution = false }
 ]
 
 [[commands]]
@@ -129,6 +169,8 @@ items = [
     { name = "Download & Run Qwen3-Coder-30B-A3B (GPU)", description = "Downloads Qwen3-Coder-30B-A3B-Instruct (Q8_0) in the foreground and starts the llama.cpp CLI TUI with the full context window (-c 0). No MoE CPU offload is set, so this needs enough VRAM or it will spill. Model is cached.", command = "set -m; cd $HOME/llama.cpp && ./llama-cli -hf ggml-org/Qwen3-Coder-30B-A3B-Instruct-Q8_0-GGUF -c 0 & fg; stty sane", auto_close_execution = false },
 
     { name = "Download & Run GPT-OSS-120B (GPU)", description = "Downloads GPT-OSS-120B (MXFP4). Optimized for NVIDIA 3060 (12GB) with >40GB System RAM. Runs in foreground.", command = "set -m; cd $HOME/llama.cpp && ./llama-cli -hf ggml-org/gpt-oss-120b-GGUF -c 0 -ub 2048 -b 2048 --n-cpu-moe 35 & fg; stty sane", auto_close_execution = false },
+
+    { name = "Download & Run Qwen3.8-27B (GPU)", description = "Downloads Unsloth's Qwen3.8-27B in the foreground and starts the llama.cpp CLI TUI with the full context window (-c 0). A 27B dense model with a vision encoder — dense, so the --n-cpu-moe offload used by the GPT-OSS cells does not apply here. The repo carries many quants; no tag is given, so llama.cpp picks its default — append e.g. ':Q8_0' to the repo id to pin one. Model is cached.", command = "set -m; cd $HOME/llama.cpp && ./llama-cli -hf unsloth/Qwen3.8-27B-GGUF -c 0 & fg; stty sane", auto_close_execution = false },
 ]
 
 [[commands]]
@@ -140,26 +182,12 @@ To add a model, copy any line below and change the repo id and the flags:
   serve.sh <hf-repo-id> [llama-server flags...]
 serve.sh handles the cache check, the foreground download, the background launch and the PID/log report. See 'View serve.sh' in Documentation.
 
-First run after a summon: use 'Make Scripts Executable' once — drako copies assets without the executable bit.
+First run after a summon: use 'Make Scripts Executable' in the Deck Scripts cell (Column A) once — drako copies assets without the executable bit.
 """
 col = "B"
 row = 1
 items = [
     {name = "Open Local WebUI", description = "Opens the LLamaCPP WebUI address in your Browser.", command = "xdg-open http://127.0.0.1:8033/ > /dev/null 2>&1 &"},
-
-    { name = "🔧 Make Scripts Executable", description = "Run this once after summoning the deck. Drako copies assets without the executable bit, so serve.sh and models.sh both need +x before the server commands below, or List Models and Launch Cached Model, will run.", command = """
-#!/bin/bash
-DIR="$HOME/.config/drako/assets/ggml.llama-cpp"
-shopt -s nullglob
-scripts=("$DIR"/*.sh)
-if [ ${#scripts[@]} -eq 0 ]; then
-    echo "❌ No scripts found in: $DIR"
-    echo "💡 Assets are copied by 'drako summon'. Re-summon the deck to deploy them."
-    exit 1
-fi
-chmod +x "${scripts[@]}" && echo "✅ Made executable:"
-ls -l "${scripts[@]}"
-""", auto_close_execution = false },
 
     { name = "Start Qwen2.5-Omni-3B-GGUF WebUI Server (CPU)", description = "Launches the Qwen2.5-Omni-3B-GGUF model WebUI. Downloads in foreground if missing.", command = "~/.config/drako/assets/ggml.llama-cpp/serve.sh ggml-org/Qwen2.5-Omni-3B-GGUF --jinja -c 0 --host 127.0.0.1 --port 8033", auto_close_execution = false },
 
@@ -171,6 +199,8 @@ ls -l "${scripts[@]}"
 
     { name = "Start GPU Server GPT-OSS-120B WebUI Server (GPU)", description = "Launches GPT-OSS-120B. Optimized for NVIDIA 3060 (12GB) with >40 GB system RAM. Downloads in foreground if missing.", command = "~/.config/drako/assets/ggml.llama-cpp/serve.sh ggml-org/gpt-oss-120b-GGUF --jinja -c 0 -b 2048 -ub 2048 --n-cpu-moe 35 --host 0.0.0.0 --port 8033", auto_close_execution = false },
 
+    { name = "Start Qwen3.8-27B WebUI Server (GPU)", description = "Launches Unsloth's Qwen3.8-27B WebUI. A 27B dense model with a vision encoder — dense, so no MoE offload flags apply. The repo carries many quants; no tag is given, so llama.cpp picks its default — append e.g. ':Q8_0' to the repo id to pin one. Downloads in foreground if missing.", command = "~/.config/drako/assets/ggml.llama-cpp/serve.sh unsloth/Qwen3.8-27B-GGUF --jinja -c 0 --host 0.0.0.0 --port 8033", auto_close_execution = false },
+
 ]
 
 #=======================================================================================================================
@@ -179,7 +209,7 @@ ls -l "${scripts[@]}"
 # └─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┘
 [[commands]]
 name = "💾 Manage Models"
-description = "Inspect, launch and delete GGUF models in the Hugging Face cache (~/.cache/huggingface/hub). 'Launch Cached Model' runs anything listed here without editing this profile. Needs 'Make Scripts Executable' once after a summon."
+description = "Inspect, launch and delete GGUF models in the Hugging Face cache (~/.cache/huggingface/hub). 'Launch Cached Model' runs anything listed here without editing this profile. Both cells need 'Make Scripts Executable' (Deck Scripts, Column A) run once after a summon."
 col = "C"
 row = 0
 items = [
