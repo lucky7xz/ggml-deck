@@ -170,7 +170,7 @@ items = [
 
     { name = "Download & Run GPT-OSS-120B (GPU)", description = "Downloads GPT-OSS-120B (MXFP4). Optimized for NVIDIA 3060 (12GB) with >40GB System RAM. Runs in foreground.", command = "set -m; cd $HOME/llama.cpp && ./llama-cli -hf ggml-org/gpt-oss-120b-GGUF -c 0 -ub 2048 -b 2048 --n-cpu-moe 35 & fg; stty sane", auto_close_execution = false },
 
-    { name = "Download & Run Qwen3.8-27B (GPU)", description = "Downloads Unsloth's Qwen3.8-27B in the foreground and starts the llama.cpp CLI TUI with the full context window (-c 0). A 27B dense model with a vision encoder — dense, so the --n-cpu-moe offload used by the GPT-OSS cells does not apply here. The repo carries many quants; no tag is given, so llama.cpp picks its default — append e.g. ':Q8_0' to the repo id to pin one. Model is cached.", command = "set -m; cd $HOME/llama.cpp && ./llama-cli -hf unsloth/Qwen3.8-27B-GGUF -c 0 & fg; stty sane", auto_close_execution = false },
+    { name = "Download & Run Qwen3.8-27B (GPU)", description = "Downloads Unsloth's Qwen3.8-27B in the foreground and starts the llama.cpp CLI TUI with the full context window (-c 0). A 27B dense model with a vision encoder — dense, so the --n-cpu-moe offload used by the GPT-OSS cells does not apply here. The repo carries many quants; no tag is given, so llama.cpp picks its default — append e.g. ':Q8_0' to the repo id to pin one. Model is cached.", command = "set -m; cd $HOME/llama.cpp && ./llama-cli -hf unsloth/Qwen3.8-27B-GGUF -c 0 --spec-type draft-mtp --spec-draft-n-max 2 & fg; stty sane", auto_close_execution = false },
 ]
 
 [[commands]]
@@ -199,9 +199,25 @@ items = [
 
     { name = "Start GPU Server GPT-OSS-120B WebUI Server (GPU)", description = "Launches GPT-OSS-120B. Optimized for NVIDIA 3060 (12GB) with >40 GB system RAM. Downloads in foreground if missing.", command = "~/.config/drako/assets/ggml.llama-cpp/serve.sh ggml-org/gpt-oss-120b-GGUF --jinja -c 0 -b 2048 -ub 2048 --n-cpu-moe 35 --host 0.0.0.0 --port 8033", auto_close_execution = false },
 
-    { name = "Start Qwen3.8-27B WebUI Server (GPU)", description = "Launches Unsloth's Qwen3.8-27B WebUI. A 27B dense model with a vision encoder — dense, so no MoE offload flags apply. The repo carries many quants; no tag is given, so llama.cpp picks its default — append e.g. ':Q8_0' to the repo id to pin one. Downloads in foreground if missing.", command = "~/.config/drako/assets/ggml.llama-cpp/serve.sh unsloth/Qwen3.8-27B-GGUF --jinja -c 0 --host 0.0.0.0 --port 8033", auto_close_execution = false },
+    { name = "Start Qwen3.8-27B WebUI Server (GPU)", description = "Launches Unsloth's Qwen3.8-27B WebUI. A 27B dense model with a vision encoder — dense, so no MoE offload flags apply. The repo carries many quants; no tag is given, so llama.cpp picks its default — append e.g. ':Q8_0' to the repo id to pin one. Downloads in foreground if missing.", command = "~/.config/drako/assets/ggml.llama-cpp/serve.sh unsloth/Qwen3.8-27B-GGUF --jinja -c 0 --spec-type draft-mtp --spec-draft-n-max 2 --host 0.0.0.0 --port 8033", auto_close_execution = false },
 
 ]
+
+[[commands]]
+name = "🚀 Launch Model"
+description = """
+Run anything already in the Hugging Face cache without editing this profile. Asks four things: which model (chosen from the cache, or a repo id you type), server or TUI, whether to enable MTP, and — for a server — whether to bind 127.0.0.1 or 0.0.0.0.
+
+Launches with the deck's standard flags (--jinja -c 0 --port 8033 for a server, -c 0 for the TUI). It does NOT set --n-cpu-moe or batch tuning, so for large MoE models on a small GPU use the dedicated cells in 'Launch WebUI Service' instead.
+
+MTP (multi-token prediction) is speculative decoding off the model's own heads, so no draft model is involved. Answering yes appends '--spec-type draft-mtp --spec-draft-n-max 2', whatever the model. It needs llama.cpp b9200+ and a model that actually carries MTP weights; the flag is passed through unchecked, so a model without them will fail to load.
+
+Needs 'Make Scripts Executable' (Deck Scripts, Column A) run once after a summon.
+"""
+col = "B"
+row = 2
+command = "~/.config/drako/assets/ggml.llama-cpp/models.sh launch"
+auto_close_execution = false
 
 #=======================================================================================================================
 # ┌─ COLUMN C: Models & Docs ─────────────────────────────────────────────────────────────────────────────────────────┐
@@ -209,40 +225,13 @@ items = [
 # └─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┘
 [[commands]]
 name = "💾 Manage Models"
-description = "Inspect, launch and delete GGUF models in the Hugging Face cache (~/.cache/huggingface/hub). 'Launch Cached Model' runs anything listed here without editing this profile. Both cells need 'Make Scripts Executable' (Deck Scripts, Column A) run once after a summon."
+description = "Inspect and delete GGUF models in the Hugging Face cache (~/.cache/huggingface/hub). To run one, use '🚀 Launch Cached Model' in Column B. Needs 'Make Scripts Executable' (Deck Scripts, Column A) run once after a summon."
 col = "C"
 row = 0
 items = [
     { name = "List Models", description = "Lists one row per cached quant, largest first. Each row is a ready-to-paste -hf argument (provider/model:QUANT) you can drop straight into a serve.sh command. A repo holding two quants shows as two rows, not one summed line. Abandoned part-downloads are listed separately, since they are not usable.", command = "~/.config/drako/assets/ggml.llama-cpp/models.sh list", auto_close_execution = false },
 
-    { name = "🚀 Launch Cached Model", description = "Pick any cached model and run it, without editing this profile. Asks three things: which model (chosen from the cache, or a repo id you type), server or TUI, and \u2014 for a server \u2014 whether to bind 127.0.0.1 or 0.0.0.0. Launches with the deck's standard flags (--jinja -c 0 --port 8033 for a server, -c 0 for the TUI); it does NOT set --n-cpu-moe or batch tuning, so for large MoE models on a small GPU use the dedicated cells in 'Launch WebUI Service' instead.", command = "~/.config/drako/assets/ggml.llama-cpp/models.sh launch", auto_close_execution = false },
-
-    { name = "Remove Model", description = "Select a model folder to delete entirely from the Hugging Face cache.", command = """
-#!/bin/bash
-CACHE_DIR="$HOME/.cache/huggingface/hub"
-cd "$CACHE_DIR" || { echo "Cache dir not found"; exit 1; }
-shopt -s nullglob 2>/dev/null || setopt nullglob 2>/dev/null
-
-# Target huggingface model directories
-dirs=(models--*)
-[ ${#dirs[@]} -eq 0 ] && { echo "No models found."; exit 0; }
-
-echo "Select a model to DELETE:"
-PS3="#? "
-select dir in "${dirs[@]}"; do
-    if [ -n "$dir" ]; then
-        echo -e "\\n⚠️  Delete the entire model folder '$dir'? (y/n)"
-        read -r answer
-        case "$answer" in
-            [Yy]* ) rm -rf "$dir"; echo "✅ Deleted."; ;;
-            * ) echo "❌ Cancelled."; ;;
-        esac
-        break
-    else
-        echo "Invalid selection."
-    fi
-done
-""", auto_close_execution = false }
+    { name = "Remove Model", description = "Delete one cached quant, without touching the other quants of the same repo. Rows match 'List Models' — one per quant, plus the mmproj sidecars and the abandoned part-downloads. Removing a repo's last quant removes the repo folder too. Asks to confirm before anything is deleted.", command = "~/.config/drako/assets/ggml.llama-cpp/models.sh remove", auto_close_execution = false }
 ]
 
 [[commands]]

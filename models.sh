@@ -4,18 +4,27 @@
 # Usage:
 #   models.sh list      One row per cached quant, as pasteable -hf ids.
 #   models.sh launch    Pick a cached model and start it as a server or a TUI.
+#   models.sh remove    Delete one cached quant, or one abandoned download.
 #
 # Server launches are handed to serve.sh, which owns the cache check, the
 # foreground download and the background PID/log report.
 
-CACHE="$HOME/.cache/huggingface/hub"
+# HF_HUB_CACHE is Hugging Face's own override. Honouring it is what lets the
+# destructive 'remove' path be tested against a fixture cache.
+CACHE="${HF_HUB_CACHE:-$HOME/.cache/huggingface/hub}"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 # ── Cache enumeration ────────────────────────────────────────────────────────
-# Populates: ROWS[]       "bytes<TAB>display<TAB>launch_id"  (launch_id empty
-#                         for mmproj sidecars and unrecognised filenames)
-#            INCOMPLETE[] "size<TAB>id"
+# Populates: ROWS[]       "bytes<TAB>display<TAB>repo_dir<TAB>stem<TAB>launch_id"
+#                         (repo_dir + stem are what 'remove' deletes; launch_id
+#                         is empty for mmproj sidecars, so it goes LAST — TAB is
+#                         IFS whitespace, and an empty field in the middle would
+#                         collapse and shift every later field left)
+#            INCOMPLETE[] "size<TAB>id<TAB>repo_dir"
 #            TOTAL, REPO_COUNT
+#
+# Readers must absorb the trailing fields (read -r a b c _), or the last
+# variable silently swallows the rest of the line.
 scan_cache() {
     ROWS=()
     INCOMPLETE=()
@@ -35,7 +44,7 @@ scan_cache() {
         # A repo with no .gguf under snapshots/ is an abandoned download.
         files=("$repo"/snapshots/*/*.gguf)
         if [ ${#files[@]} -eq 0 ]; then
-            INCOMPLETE+=("$(du -sh "$repo" 2>/dev/null | cut -f1)	$id")
+            INCOMPLETE+=("$(du -sh "$repo" 2>/dev/null | cut -f1)	$id	$repo")
             continue
         fi
 
@@ -57,17 +66,103 @@ scan_cache() {
             b=${part_bytes["$stem"]}
             TOTAL=$((TOTAL + b))
             if [[ $stem == mmproj* ]]; then
-                ROWS+=("$b	$id  [mmproj]	")
+                ROWS+=("$b	$id  [mmproj]	$repo	$stem	")
             elif [[ $stem =~ -((IQ|Q)[0-9]+[A-Za-z0-9_]*|BF16|F16|F32|MXFP4)$ ]]; then
-                ROWS+=("$b	${id}:${BASH_REMATCH[1]^^}	${id}:${BASH_REMATCH[1]^^}")
+                ROWS+=("$b	${id}:${BASH_REMATCH[1]^^}	$repo	$stem	${id}:${BASH_REMATCH[1]^^}")
             else
                 # No recognisable quant token: the bare repo id is still a
                 # valid -hf argument, so it stays launchable.
-                ROWS+=("$b	$id  ($stem.gguf)	$id")
+                ROWS+=("$b	$id  ($stem.gguf)	$repo	$stem	$id")
             fi
         done
         unset part_bytes
     done
+}
+
+# ── Deletion ─────────────────────────────────────────────────────────────────
+# Delete one quant: every snapshot symlink carrying this stem, then the blobs
+# they pointed at. Blobs live inside the repo and are content-addressed, so two
+# different quants can never share one — once a stem's links are gone, its blobs
+# are referenced by nothing. Read each link before unlinking it.
+delete_stem() {
+    local repo=$1 stem=$2 f left
+    local blobs=()
+
+    for f in "$repo"/snapshots/*/"$stem".gguf \
+             "$repo"/snapshots/*/"$stem"-[0-9][0-9][0-9][0-9][0-9]-of-[0-9][0-9][0-9][0-9][0-9].gguf; do
+        blobs+=("$(readlink -f "$f")")
+        rm -f "$f"
+    done
+    [ ${#blobs[@]} -gt 0 ] && rm -f "${blobs[@]}"
+
+    # That was the repo's last quant — nothing left but metadata.
+    left=("$repo"/snapshots/*/*.gguf)
+    [ ${#left[@]} -eq 0 ] && rm -rf "$repo"
+    return 0
+}
+
+# ── remove ───────────────────────────────────────────────────────────────────
+cmd_remove() {
+    [ -d "$CACHE" ] || { echo "Cache dir not found."; exit 0; }
+    scan_cache
+
+    # One menu of deletable things. An empty stem means "the whole repo", which
+    # is what an abandoned download is.
+    local menu=() labels=() repos=() stems=() sizes=()
+    local b label repo stem sz id line
+    while IFS=$'\t' read -r b label repo stem _; do
+        [ -n "$repo" ] || continue
+        sz=$(numfmt --to=iec <<<"$b")
+        menu+=("$(printf '%8s  %s' "$sz" "$label")")
+        labels+=("$label"); repos+=("$repo"); stems+=("$stem"); sizes+=("$sz")
+    done < <(printf '%s\n' "${ROWS[@]}" | sort -rn)
+
+    for line in "${INCOMPLETE[@]}"; do
+        IFS=$'\t' read -r sz id repo <<<"$line"
+        menu+=("$(printf '%8s  [incomplete] %s' "$sz" "$id")")
+        labels+=("$id (incomplete download)"); repos+=("$repo"); stems+=(""); sizes+=("$sz")
+    done
+
+    if [ ${#menu[@]} -eq 0 ]; then
+        echo "No models found."
+        exit 0
+    fi
+
+    echo "🗑️  Select what to DELETE:"
+    echo "---------------------------------------------------"
+    local CANCEL_ENTRY="[ cancel ]" choice i="" answer
+    PS3="#? "
+    select choice in "${menu[@]}" "$CANCEL_ENTRY"; do
+        case "$choice" in
+            "$CANCEL_ENTRY") echo "❌ Cancelled."; exit 0 ;;
+            "") echo "Invalid selection." ;;
+            *)  i=$((REPLY - 1)); break ;;
+        esac
+    done
+    # select also ends on EOF (Ctrl-D) with nothing chosen — never fall through
+    # to a confirm prompt for whatever happens to sit at index 0.
+    [ -n "$i" ] || { echo "❌ Cancelled."; exit 0; }
+
+    echo
+    echo "⚠️  Delete '${labels[$i]}' (${sizes[$i]})?  (y/n)"
+    read -r answer
+    case "$answer" in
+        [Yy]*) ;;
+        *) echo "❌ Cancelled."; exit 0 ;;
+    esac
+
+    # Never rm -rf anything that is not a repo directory inside the cache.
+    case "${repos[$i]}" in
+        "$CACHE"/models--*) ;;
+        *) echo "❌ Refusing to delete '${repos[$i]}' — not a repo under $CACHE."; exit 1 ;;
+    esac
+
+    if [ -n "${stems[$i]}" ]; then
+        delete_stem "${repos[$i]}" "${stems[$i]}"
+    else
+        rm -rf "${repos[$i]}"
+    fi
+    echo "✅ Deleted. Reclaimed ${sizes[$i]}."
 }
 
 # ── list ─────────────────────────────────────────────────────────────────────
@@ -92,7 +187,7 @@ cmd_list() {
     if [ ${#INCOMPLETE[@]} -gt 0 ]; then
         echo
         echo "  ⚠ incomplete downloads (not usable, delete via 'Remove Model'):"
-        printf '%s\n' "${INCOMPLETE[@]}" | while IFS=$'\t' read -r sz id; do
+        printf '%s\n' "${INCOMPLETE[@]}" | while IFS=$'\t' read -r sz id _; do
             printf '%8s  %s\n' "$sz" "$id"
         done
     fi
@@ -105,7 +200,7 @@ cmd_launch() {
 
     # Menu of launchable ids, largest first.
     local menu=() ids=() line b label lid
-    while IFS=$'\t' read -r b label lid; do
+    while IFS=$'\t' read -r b label _ _ lid; do
         [ -n "$lid" ] || continue
         menu+=("$lid  ($(numfmt --to=iec <<<"$b"))")
         ids+=("$lid")
@@ -145,12 +240,24 @@ cmd_launch() {
     done
     [ -z "$MODE" ] && { echo "❌ Cancelled."; exit 0; }
 
+    # MTP (multi-token prediction): speculative decoding off the model's own
+    # heads, no draft model involved. Needs llama.cpp b9200+ and a model that
+    # carries MTP weights — the flag is passed through as asked, unchecked.
+    local MTP=() MTP_CHOICE=""
+    echo
+    echo "Enable MTP (multi-token prediction)?"
+    select MTP_CHOICE in "No" "Yes — --spec-type draft-mtp --spec-draft-n-max 2"; do
+        [ -n "$MTP_CHOICE" ] && break
+        echo "Invalid selection."
+    done
+    [[ $MTP_CHOICE == Yes* ]] && MTP=(--spec-type draft-mtp --spec-draft-n-max 2)
+
     if [[ $MODE == TUI* ]]; then
         echo
-        echo "▶️  llama-cli -hf $MODEL -c 0"
+        echo "▶️  llama-cli -hf $MODEL -c 0 ${MTP[*]}"
         set -m
         cd "$HOME/llama.cpp" || { echo "❌ Not found: $HOME/llama.cpp"; exit 1; }
-        ./llama-cli -hf "$MODEL" -c 0 &
+        ./llama-cli -hf "$MODEL" -c 0 "${MTP[@]}" &
         fg
         stty sane
         exit 0
@@ -164,11 +271,12 @@ cmd_launch() {
     [ -z "$HOST" ] && { echo "❌ Cancelled."; exit 0; }
 
     echo
-    exec "$SCRIPT_DIR/serve.sh" "$MODEL" --jinja -c 0 --host "$HOST" --port 8033
+    exec "$SCRIPT_DIR/serve.sh" "$MODEL" --jinja -c 0 "${MTP[@]}" --host "$HOST" --port 8033
 }
 
 case "${1:-list}" in
     list)   cmd_list ;;
     launch) cmd_launch ;;
-    *)      echo "Usage: models.sh [list|launch]"; exit 1 ;;
+    remove) cmd_remove ;;
+    *)      echo "Usage: models.sh [list|launch|remove]"; exit 1 ;;
 esac
