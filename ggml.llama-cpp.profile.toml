@@ -112,8 +112,12 @@ echo "-----------------------------------------------"
 ]
 
 [[commands]]
-name = "🛑 Stop All Services"
-description = "Stops all running llama-server and llama-cli processes."
+name = "🛑 Services & Logs"
+description = """
+Stop the running llama-server and llama-cli processes, and read the server log.
+
+Every background server writes to ~/llama.cpp/server.log — that is where a model download and the model load show up. If a server cell reports that it is still starting, 'Follow Server Log' is how you watch it get there.
+"""
 col = "A"
 row = 2
 items = [
@@ -138,6 +142,24 @@ else
     echo "✅ All stopped."
 fi
 exit 0
+''', auto_close_execution = false },
+
+  { name = "View Server Log", description = "Prints the last 50 lines of ~/llama.cpp/server.log — enough to see why a server died, or how far a download got.", command = '''
+#!/bin/bash
+LOG="$HOME/llama.cpp/server.log"
+[ -f "$LOG" ] || { echo "📭 No log yet: $LOG"; echo "💡 It is written the first time a server starts in the background."; exit 0; }
+echo "📄 $LOG  (last 50 lines)"
+echo "-----------------------------------------------"
+tail -n 50 "$LOG"
+''', auto_close_execution = false },
+
+  { name = "Follow Server Log", description = "Live tail of ~/llama.cpp/server.log. Use this while a server is starting to watch a model download and load. Ctrl-C to stop watching — it does not stop the server.", command = '''
+#!/bin/bash
+LOG="$HOME/llama.cpp/server.log"
+[ -f "$LOG" ] || { echo "📭 No log yet: $LOG"; echo "💡 It is written the first time a server starts in the background."; exit 0; }
+echo "📄 Following $LOG — Ctrl-C to stop watching (the server keeps running)."
+echo "-----------------------------------------------"
+tail -f "$LOG"
 ''', auto_close_execution = false }
 ]
 
