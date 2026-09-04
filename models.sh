@@ -15,6 +15,35 @@
 CACHE="${HF_HUB_CACHE:-$HOME/.cache/huggingface/hub}"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
+# ── The picker ───────────────────────────────────────────────────────────────
+# bash's own 'select' lays its options out in as many columns as the terminal
+# fits, so '[ cancel ]' ends up beside option 1 and the list reads as a table
+# nobody asked for. This prints one option per line inside a frame instead, and
+# closes it on the prompt line — which is also why 'select' cannot be kept and
+# merely re-styled: it prints its options and PS3 back to back, leaving nowhere
+# to draw a bottom rule.
+#
+# Sets PICK to the 1-based choice. Returns 1 on EOF (Ctrl-D), which every caller
+# treats as a cancel — never as a selection.
+PICK=""
+pick() {
+    local title=$1; shift
+    local n=$# i ans
+    printf '┌─ %s\n' "$title"
+    for ((i = 1; i <= n; i++)); do
+        printf '│ %d) %s\n' "$i" "${!i}"
+    done
+    while :; do
+        printf '└─ #? '
+        read -r ans || { PICK=""; echo; return 1; }
+        if [[ $ans =~ ^[0-9]+$ ]] && [ "$ans" -ge 1 ] && [ "$ans" -le "$n" ]; then
+            PICK=$ans
+            return 0
+        fi
+        echo "   Pick a number between 1 and $n."
+    done
+}
+
 # ── Cache enumeration ────────────────────────────────────────────────────────
 # Populates: ROWS[]       "bytes<TAB>display<TAB>repo_dir<TAB>stem<TAB>launch_id"
 #                         (repo_dir + stem are what 'remove' deletes; launch_id
@@ -129,20 +158,13 @@ cmd_remove() {
         exit 0
     fi
 
-    echo "🗑️  Select what to DELETE:"
-    echo "---------------------------------------------------"
-    local CANCEL_ENTRY="[ cancel ]" choice i="" answer
-    PS3="#? "
-    select choice in "${menu[@]}" "$CANCEL_ENTRY"; do
-        case "$choice" in
-            "$CANCEL_ENTRY") echo "❌ Cancelled."; exit 0 ;;
-            "") echo "Invalid selection." ;;
-            *)  i=$((REPLY - 1)); break ;;
-        esac
-    done
-    # select also ends on EOF (Ctrl-D) with nothing chosen — never fall through
-    # to a confirm prompt for whatever happens to sit at index 0.
-    [ -n "$i" ] || { echo "❌ Cancelled."; exit 0; }
+    local CANCEL_ENTRY="[ cancel ]" i answer
+    # A cancel — chosen or by Ctrl-D — must never fall through to the confirm
+    # prompt for whatever happens to sit at index 0.
+    pick "🗑️  Select what to DELETE" "${menu[@]}" "$CANCEL_ENTRY" \
+        || { echo "❌ Cancelled."; exit 0; }
+    [ "$PICK" -gt ${#menu[@]} ] && { echo "❌ Cancelled."; exit 0; }
+    i=$((PICK - 1))
 
     echo
     echo "⚠️  Delete '${labels[$i]}' (${sizes[$i]})?  (y/n)"
@@ -210,57 +232,52 @@ cmd_launch() {
     local TYPE_ENTRY="[ type a repo id ]" CANCEL_ENTRY="[ cancel ]"
     local MODEL=""
 
-    echo "🚀 Launch a model"
-    echo "---------------------------------------------------"
     [ ${#ids[@]} -eq 0 ] && echo "  (no cached models — use '$TYPE_ENTRY')"
 
-    PS3="#? "
-    select choice in "${menu[@]}" "$TYPE_ENTRY" "$CANCEL_ENTRY"; do
-        case "$choice" in
-            "$CANCEL_ENTRY") echo "❌ Cancelled."; exit 0 ;;
-            "$TYPE_ENTRY")
-                while :; do
-                    read -e -p "Hugging Face repo id (e.g. ggml-org/Qwen3-0.6B-GGUF:Q8_0): " MODEL
-                    [ -z "$MODEL" ] && { echo "❌ Cancelled."; exit 0; }
-                    [[ $MODEL == */* ]] && break
-                    echo "⚠️  Needs the form <user>/<model>[:quant]."
-                done
-                break ;;
-            "") echo "Invalid selection." ;;
-            *)  MODEL="${ids[$((REPLY - 1))]}"; break ;;
-        esac
-    done
+    pick "🚀 Launch a model" "${menu[@]}" "$TYPE_ENTRY" "$CANCEL_ENTRY" \
+        || { echo "❌ Cancelled."; exit 0; }
+    # The two entries past the cached ids are '[ type a repo id ]' and, last,
+    # '[ cancel ]'.
+    if [ "$PICK" -gt $(( ${#ids[@]} + 1 )) ]; then
+        echo "❌ Cancelled."; exit 0
+    elif [ "$PICK" -eq $(( ${#ids[@]} + 1 )) ]; then
+        while :; do
+            read -e -p "Hugging Face repo id (e.g. ggml-org/Qwen3-0.6B-GGUF:Q8_0): " MODEL
+            [ -z "$MODEL" ] && { echo "❌ Cancelled."; exit 0; }
+            [[ $MODEL == */* ]] && break
+            echo "⚠️  Needs the form <user>/<model>[:quant]."
+        done
+    else
+        MODEL="${ids[$((PICK - 1))]}"
+    fi
     [ -z "$MODEL" ] && { echo "❌ Cancelled."; exit 0; }
 
     echo
     echo "Model: $MODEL"
     echo
-    echo "How should it run?"
-    # 'foreground' appears in two of the three labels, so the branches below
-    # match a label whole — never a substring.
-    local BG_ENTRY="Server — WebUI, background" \
-          FG_ENTRY="Server — WebUI, foreground (watch the load, Ctrl-C stops it)" \
-          TUI_ENTRY="TUI (llama-cli, foreground)"
+    # MODE is the number picked here: 1 background, 2 foreground, 3 TUI. Two of
+    # the three labels contain the word 'foreground', so the branches below test
+    # the number rather than the text.
     local MODE=""
-    select MODE in "$BG_ENTRY" "$FG_ENTRY" "$TUI_ENTRY"; do
-        [ -n "$MODE" ] && break
-        echo "Invalid selection."
-    done
-    [ -z "$MODE" ] && { echo "❌ Cancelled."; exit 0; }
+    pick "How should it run?" \
+        "Server — WebUI, background" \
+        "Server — WebUI, foreground (watch the load, Ctrl-C stops it)" \
+        "TUI (llama-cli, foreground)" \
+        || { echo "❌ Cancelled."; exit 0; }
+    MODE=$PICK
 
     # MTP (multi-token prediction): speculative decoding off the model's own
     # heads, no draft model involved. Needs llama.cpp b9200+ and a model that
     # carries MTP weights — the flag is passed through as asked, unchecked.
-    local MTP=() MTP_CHOICE=""
+    local MTP=()
     echo
-    echo "Enable MTP (multi-token prediction)?"
-    select MTP_CHOICE in "No" "Yes — --spec-type draft-mtp --spec-draft-n-max 2"; do
-        [ -n "$MTP_CHOICE" ] && break
-        echo "Invalid selection."
-    done
-    [[ $MTP_CHOICE == Yes* ]] && MTP=(--spec-type draft-mtp --spec-draft-n-max 2)
+    pick "Enable MTP (multi-token prediction)?" \
+        "No" \
+        "Yes — --spec-type draft-mtp --spec-draft-n-max 2" \
+        || { echo "❌ Cancelled."; exit 0; }
+    [ "$PICK" -eq 2 ] && MTP=(--spec-type draft-mtp --spec-draft-n-max 2)
 
-    if [ "$MODE" = "$TUI_ENTRY" ]; then
+    if [ "$MODE" -eq 3 ]; then
         echo
         echo "▶️  llama-cli -hf $MODEL -c 0 ${MTP[*]}"
         set -m
@@ -272,14 +289,15 @@ cmd_launch() {
     fi
 
     local FG=()
-    [ "$MODE" = "$FG_ENTRY" ] && FG=(--fg)
+    [ "$MODE" -eq 2 ] && FG=(--fg)
 
+    echo
     local HOST=""
-    select HOST in "127.0.0.1" "0.0.0.0"; do
-        [ -n "$HOST" ] && break
-        echo "Invalid selection."
-    done
-    [ -z "$HOST" ] && { echo "❌ Cancelled."; exit 0; }
+    pick "Bind the server to" \
+        "127.0.0.1  (this machine only)" \
+        "0.0.0.0    (also reachable on your LAN)" \
+        || { echo "❌ Cancelled."; exit 0; }
+    [ "$PICK" -eq 1 ] && HOST=127.0.0.1 || HOST=0.0.0.0
 
     echo
     exec "$SCRIPT_DIR/serve.sh" "${FG[@]}" "$MODEL" --jinja -c 0 "${MTP[@]}" --host "$HOST" --port 8033
