@@ -3,7 +3,8 @@
 #
 # Usage:
 #   models.sh list      One row per cached quant, as pasteable -hf ids.
-#   models.sh launch    Pick a cached model and start it as a server or a TUI.
+#   models.sh launch    Pick a cached model and start it as a background server,
+#                       a foreground server, or a TUI.
 #   models.sh remove    Delete one cached quant, or one abandoned download.
 #
 # Server launches are handed to serve.sh, which owns the cache check, the
@@ -233,8 +234,15 @@ cmd_launch() {
 
     echo
     echo "Model: $MODEL"
+    echo
+    echo "How should it run?"
+    # 'foreground' appears in two of the three labels, so the branches below
+    # match a label whole — never a substring.
+    local BG_ENTRY="Server — WebUI, background" \
+          FG_ENTRY="Server — WebUI, foreground (watch the load, Ctrl-C stops it)" \
+          TUI_ENTRY="TUI (llama-cli, foreground)"
     local MODE=""
-    select MODE in "Server (WebUI, background)" "TUI (llama-cli, foreground)"; do
+    select MODE in "$BG_ENTRY" "$FG_ENTRY" "$TUI_ENTRY"; do
         [ -n "$MODE" ] && break
         echo "Invalid selection."
     done
@@ -252,7 +260,7 @@ cmd_launch() {
     done
     [[ $MTP_CHOICE == Yes* ]] && MTP=(--spec-type draft-mtp --spec-draft-n-max 2)
 
-    if [[ $MODE == TUI* ]]; then
+    if [ "$MODE" = "$TUI_ENTRY" ]; then
         echo
         echo "▶️  llama-cli -hf $MODEL -c 0 ${MTP[*]}"
         set -m
@@ -263,6 +271,9 @@ cmd_launch() {
         exit 0
     fi
 
+    local FG=()
+    [ "$MODE" = "$FG_ENTRY" ] && FG=(--fg)
+
     local HOST=""
     select HOST in "127.0.0.1" "0.0.0.0"; do
         [ -n "$HOST" ] && break
@@ -271,7 +282,7 @@ cmd_launch() {
     [ -z "$HOST" ] && { echo "❌ Cancelled."; exit 0; }
 
     echo
-    exec "$SCRIPT_DIR/serve.sh" "$MODEL" --jinja -c 0 "${MTP[@]}" --host "$HOST" --port 8033
+    exec "$SCRIPT_DIR/serve.sh" "${FG[@]}" "$MODEL" --jinja -c 0 "${MTP[@]}" --host "$HOST" --port 8033
 }
 
 case "${1:-list}" in

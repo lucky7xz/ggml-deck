@@ -114,9 +114,11 @@ echo "-----------------------------------------------"
 [[commands]]
 name = "🛑 Services & Logs"
 description = """
-Stop the running llama-server and llama-cli processes, and read the server log.
+See what is running, stop it, and read the server log.
 
-Every background server writes to ~/llama.cpp/server.log — that is where a model download and the model load show up. If a server cell reports that it is still starting, 'Follow Server Log' is how you watch it get there.
+'📊 Server Status' is the one to reach for first: it separates 'listening' from 'ready'. A llama-server binds its port before it reads the weights and answers /health with 503 until the model is in, so a port that answers does not mean a server that works.
+
+Every server writes to ~/llama.cpp/server.log — that is where a model download and the model load show up, and where a server that died says why. If a launch reports that it is still starting, 'Follow Server Log' is how you watch it get there.
 """
 col = "A"
 row = 2
@@ -140,6 +142,70 @@ if pgrep -x "llama-server" >/dev/null || pgrep -x "llama-cli" >/dev/null; then
     pgrep -a -x llama-cli
 else
     echo "✅ All stopped."
+fi
+exit 0
+''', auto_close_execution = false },
+
+  { name = "📊 Server Status", description = "Answers whether a server is actually up: the running llama-server/llama-cli processes with their model and uptime, what holds port 8033, whether the model has finished loading, and — when nothing is running — the tail of the log, which is where a launch that died says why.", command = '''
+#!/bin/bash
+# A llama-server binds its port before it reads the weights, so 'listening' and
+# 'ready' are two different states. /health tells them apart: 503 while loading,
+# 200 once the model is in.
+PORT=8033
+LOG="$HOME/llama.cpp/server.log"
+
+echo "📊 Server status"
+echo "-----------------------------------------------"
+
+echo "Processes:"
+FOUND=""
+for BIN in llama-server llama-cli; do
+    while read -r pid rest; do
+        [ -n "$pid" ] || continue
+        FOUND=1
+        printf '  %s  pid %s  up %s\n' "$BIN" "$pid" "$(ps -o etime= -p "$pid" | tr -d ' ')"
+        printf '    %s\n' "$rest"
+    done < <(pgrep -a -x "$BIN")
+done
+[ -z "$FOUND" ] && echo "  none running"
+
+echo
+echo "Port $PORT:"
+HOLDER=$(ss -ltnpH "sport = :$PORT" 2>/dev/null)
+if [ -n "$HOLDER" ]; then
+    printf '%s\n' "$HOLDER" | sed 's/^/  /'
+else
+    echo "  nothing listening"
+fi
+
+echo
+echo "Health:"
+CODE=$(curl -s -o /dev/null -m 2 -w '%{http_code}' "http://127.0.0.1:$PORT/health" 2>/dev/null)
+case "$CODE" in
+    200) echo "  ✅ ready — the model is loaded" ;;
+    503) echo "  ⏳ still loading the model (watch it with 'Follow Server Log')" ;;
+    000|"") echo "  — no answer on http://127.0.0.1:$PORT" ;;
+    *)   echo "  ⚠️  answered HTTP $CODE" ;;
+esac
+
+if [ "$CODE" = "200" ]; then
+    PROPS=$(curl -fsS -m 2 "http://127.0.0.1:$PORT/props" 2>/dev/null)
+    MODEL=$(grep -o '"model_path":"[^"]*"' <<<"$PROPS" | head -1 | cut -d'"' -f4)
+    [ -z "$MODEL" ] && MODEL=$(curl -fsS -m 2 "http://127.0.0.1:$PORT/v1/models" 2>/dev/null | grep -o '"id":"[^"]*"' | head -1 | cut -d'"' -f4)
+    [ -n "$MODEL" ] && echo "  model: $MODEL"
+    echo "  WebUI: http://127.0.0.1:$PORT"
+fi
+
+echo
+if [ -f "$LOG" ]; then
+    echo "Log: $LOG  (written $(date -r "$LOG" '+%Y-%m-%d %H:%M:%S'))"
+    # Nothing running means the interesting part of the log is its ending.
+    if [ -z "$FOUND" ]; then
+        echo "  last 5 lines:"
+        tail -n 5 "$LOG" | sed 's/^/  /'
+    fi
+else
+    echo "Log: none yet ($LOG)"
 fi
 exit 0
 ''', auto_close_execution = false },
@@ -200,9 +266,11 @@ name = "🌐 Launch WebUI Service"
 description = """
 Each command starts one llama-server. A cached model launches in the background; a model that is not cached yet downloads in the foreground first, so you can watch progress. Every server listens on port 8033 and is reachable at http://127.0.0.1:8033 — the bind host is set per command (--host 127.0.0.1 for loopback only, --host 0.0.0.0 to also expose it on your LAN).
 
+✅ SUCCESS means the model finished loading, not merely that the port answers — llama-server binds before it reads the weights, so the two are minutes apart for a big model. A port that is already taken is refused rather than launched onto, since the server that loses the bind dies silently while the old one answers in its place. Use '📊 Server Status' and 'Stop All Servers' (Column A) when that happens.
+
 To add a model, copy any line below and change the repo id and the flags:
-  serve.sh <hf-repo-id> [llama-server flags...]
-serve.sh handles the cache check, the foreground download, the background launch and the PID/log report. See 'View serve.sh' in Documentation.
+  serve.sh [--fg] <hf-repo-id> [llama-server flags...]
+serve.sh handles the cache check, the foreground download, the background launch and the PID/log report; --fg keeps the server in the foreground so you watch it load. See 'View serve.sh' in Documentation.
 
 First run after a summon: use 'Make Scripts Executable' in the Deck Scripts cell (Column A) once — drako copies assets without the executable bit.
 """
@@ -228,7 +296,12 @@ items = [
 [[commands]]
 name = "🚀 Launch Model"
 description = """
-Run anything already in the Hugging Face cache without editing this profile. Asks four things: which model (chosen from the cache, or a repo id you type), server or TUI, whether to enable MTP, and — for a server — whether to bind 127.0.0.1 or 0.0.0.0.
+Run anything already in the Hugging Face cache without editing this profile. Asks four things: which model (chosen from the cache, or a repo id you type), how to run it, whether to enable MTP, and — for a server — whether to bind 127.0.0.1 or 0.0.0.0.
+
+The three ways to run it:
+  1  Server, background — the pane comes back once the model is loaded, and reports the PID and URL.
+  2  Server, foreground — the load log streams in the pane and Ctrl-C stops the server. This is the one to pick when a launch keeps failing.
+  3  TUI — llama-cli's own chat REPL, no server, no WebUI.
 
 Launches with the deck's standard flags (--jinja -c 0 --port 8033 for a server, -c 0 for the TUI). It does NOT set --n-cpu-moe or batch tuning, so for large MoE models on a small GPU use the dedicated cells in 'Launch WebUI Service' instead.
 
@@ -269,8 +342,28 @@ items = [
 ]
 
 [[commands]]
-name = " ⏱️ Benchmarks"
-description = "Measure model performance with llama-bench."
+name = "⏱️ Bench & Flag Templates"
+description = """
+Measure model performance with llama-bench, and keep the flag templates used to try a model under different settings.
+
+The 📋 items are TEMPLATES, not commands to run. Highlight one, press 'y' to copy it, paste it into a shell, and replace the '<placeholder>' parts. Each one is already correct for one situation, so usually the only edit is the repo id.
+
+The placeholders are quoted on purpose. Leave the quotes: unquoted, a shell reads <user/repo-GGUF> as a redirection and writes a file named after the next flag instead of running anything. Running a template as-is just fails on the repo id, harmlessly.
+
+'List Models' (Column C, top) prints one ready-to-paste provider/model:QUANT id per cached quant — exactly what the placeholders want.
+
+Flag legend:
+  -c     context size, 0 = whatever the model was trained for
+  -ngl   layers kept in VRAM (99 = all of them)
+  -ncmoe MoE expert layers pushed back to CPU RAM — the knob for a MoE that does not fit
+  -np    server slots, i.e. how many requests run at once
+  -b/-ub logical / physical batch size, prompt-processing throughput
+  -fa    flash attention: 'on|off|auto' for llama-server, '0|1' for llama-bench
+  -ctk   KV cache type, q8_0 roughly halves cache RAM at long context
+  -ctv   same for V
+  -hfd   a small draft model for speculative decoding of a big one
+  -t     CPU threads
+"""
 col = "C"
 row = 2
 items = [
@@ -279,6 +372,11 @@ items = [
 read -p 'Enter Hugging Face repo id (e.g. ggml-org/Qwen3-0.6B-GGUF): ' model_path
 read -p 'Enter number of threads (e.g., 8): ' threads
 read -p 'Enter number of GPU layers (e.g., 35): ' ngl
-$HOME/llama.cpp/build/bin/llama-bench -hf "$model_path" -t "$threads" -ngl "$ngl" > ~/llama.cpp/server.log 2>&1 &
-""", auto_close_execution = false }
+$HOME/llama.cpp/llama-bench -hf "$model_path" -t "$threads" -ngl "$ngl" > ~/llama.cpp/server.log 2>&1 &
+""", auto_close_execution = false },
+
+    # ── llama-server templates ────────────────────────────────────────────────
+    { name = "📋 server — dense model, GPU, LAN", description = "The plain case: a dense model that fits in VRAM, served to your network. Swap the repo id and the :Q8_0 tag. Drop '-ngl 99' to let llama.cpp decide the split itself, or lower it to keep some layers on the CPU. Runs in the foreground so you see the load log — Ctrl+C stops it.", command = "cd $HOME/llama.cpp && ./llama-server -hf '<user/repo-GGUF>:Q8_0' --jinja -c 0 -ngl 99 --host 0.0.0.0 --port 8033", auto_close_execution = false },
+
+    { name = "📋 server — MTP speculative decoding", description = "The Qwen3.8-27B setup from Column B, as a template. MTP (multi-token prediction) is speculative decoding off the model's own heads, so no draft model is loaded. Needs llama.cpp b9200+ and a model that actually carries MTP weights — the flags are passed through unchecked, so a model without them fails to load.", command = "cd $HOME/llama.cpp && ./llama-server -hf '<user/repo-GGUF>' --jinja -c 0 --spec-type draft-mtp --spec-draft-n-max 2 --host 0.0.0.0 --port 8033", auto_close_execution = false }
 ]
