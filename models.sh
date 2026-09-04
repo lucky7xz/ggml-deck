@@ -95,7 +95,12 @@ scan_cache() {
         for stem in "${!part_bytes[@]}"; do
             b=${part_bytes["$stem"]}
             TOTAL=$((TOTAL + b))
-            if [[ $stem == mmproj* ]]; then
+            # 'mmproj' anywhere, not just as a prefix: plenty of repos ship the
+            # projector as '<model>-mmproj-F16.gguf'. Matched as a prefix those
+            # became launch rows of their own — a phantom ':F16' beside the real
+            # quant, or a bare repo id when the name carries no quant token —
+            # and picking one launches a sidecar as if it were a model.
+            if [[ $stem == *mmproj* ]]; then
                 ROWS+=("$b	$id  [mmproj]	$repo	$stem	")
             elif [[ $stem =~ -((IQ|Q)[0-9]+[A-Za-z0-9_]*|BF16|F16|F32|MXFP4)$ ]]; then
                 ROWS+=("$b	${id}:${BASH_REMATCH[1]^^}	$repo	$stem	${id}:${BASH_REMATCH[1]^^}")

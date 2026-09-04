@@ -96,11 +96,14 @@ run_foreground() {
 #
 # Match the '-<QUANT>.gguf' suffix, not a substring, or ':Q4_0' would be
 # satisfied by a cached '…-Q4_0_XL.gguf'. Sidecars are excluded: a cached mmproj
-# is not a cached model.
+# is not a cached model — and 'mmproj' has to be matched anywhere in the name,
+# since a projector shipped as '<model>-mmproj-Q8_0.gguf' otherwise satisfies
+# the ':Q8_0' match itself, and the model's real download then runs invisibly in
+# the background.
 CACHED=""
 if [ -n "$QUANT" ]; then
     CACHED=$(find "$CACHE/" -maxdepth 1 -type d -name "$CACHE_GLOB" \
-        -exec find {} -path '*/snapshots/*' -not -name 'mmproj*' \
+        -exec find {} -path '*/snapshots/*' -not -iname '*mmproj*' \
              \( -iname "*-${QUANT}.gguf" \
                 -o -iname "*-${QUANT}-[0-9][0-9][0-9][0-9][0-9]-of-[0-9][0-9][0-9][0-9][0-9].gguf" \) \
              -print -quit \; 2>/dev/null)
